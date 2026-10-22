@@ -1,0 +1,3 @@
+import { useEffect,useState } from 'react';import {supabase} from '../lib/supabaseClient';
+const demo=Array.from({length:12},(_,i)=>({id:`t${i+1}`,number:i+1,status:[1,4,8].includes(i+1)?'ocupada':'livre',current_total:[1,4,8].includes(i+1)?62+i*7:0}));
+export function useTableStatus(){const [tables,setTables]=useState(demo);useEffect(()=>{if(!supabase)return;let alive=true;const load=async()=>{const {data}=await supabase.from('tables').select('id,number,status,current_total').order('number');if(alive&&data)setTables(data)};load();const ch=supabase.channel('tables-live').on('postgres_changes',{event:'*',schema:'public',table:'tables'},load).subscribe();return()=>{alive=false;supabase.removeChannel(ch)}},[]);return {tables,live:Boolean(supabase)}}
