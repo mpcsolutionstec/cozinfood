@@ -28,7 +28,7 @@ O repositório foi publicado e o workflow do Pages está habilitado. Cadastre as
 
 Hospede somente o frontend no Pages. Use Supabase Auth/RLS para acesso por restaurante e Edge Functions (ou servidor próprio) para operações privilegiadas. Para Pix, a Edge Function cria a preferência/ordem no Mercado Pago com segredo guardado em secret do servidor, grava pagamento com referência idempotente e recebe webhook validado; o navegador só consulta estado no banco. Para WhatsApp, encaminhe eventos de estado para um provedor por função/server. Para QR público, implemente RPC com `SECURITY DEFINER` que valide token da mesa, calcule preços no banco e limite campos graváveis; não abra INSERT anônimo irrestrito nas tabelas de pedidos.
 
-Após o cadastro da primeira conta, um administrador deve associar o UUID Auth a uma linha de `profiles` com `restaurant_id` e papel `admin`; sem esse vínculo, o login exibe acesso pendente e não abre o painel. Configure também a URL de redirecionamento de confirmação de e-mail em Supabase Auth para o domínio do app.
+No cadastro, a pessoa informa também o nome do restaurante. Após confirmar o e-mail e entrar, a função `bootstrap_restaurant_admin` cria a unidade e vincula somente a conta autenticada como `admin`; uma conta não pode se associar ao restaurante de outra pessoa. Configure a URL de redirecionamento de confirmação de e-mail em Supabase Auth para o domínio do app.
 
 ## Pastas
 
