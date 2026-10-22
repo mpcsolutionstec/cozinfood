@@ -5,7 +5,7 @@ Painel web responsivo para operação de restaurante, construído com React, Vit
 ## Executar localmente
 
 1. Instale Node.js 20 ou superior.
-2. Copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (chave publicável/anon).
+2. Copie `.env.example` para `.env` e informe `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (ou a variável legada `VITE_SUPABASE_ANON_KEY`).
 3. Rode `npm install` e `npm run dev`.
 4. Execute `supabase/schema.sql` no SQL Editor de um projeto Supabase novo. Cadastre o restaurante e crie usuários em Authentication; associe cada UUID em `profiles` com a unidade e papel correspondentes.
 
@@ -13,7 +13,7 @@ Sem `.env`, a interface carrega amostras locais; ações de escrita não são pe
 
 ## Publicação no GitHub Pages
 
-O workflow `.github/workflows/pages.yml` cria o build e publica em `https://mpcsolutionstec.github.io/cozinfood/` ao enviar commits para `main`. Em Settings → Pages, selecione GitHub Actions. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` como Actions Variables e publique novamente. A chave anon é pública e só é segura com RLS habilitado; nunca use `service_role`, token privado do Mercado Pago ou segredo de webhook no navegador.
+O workflow `.github/workflows/pages.yml` cria o build e publica em `https://mpcsolutionstec.github.io/cozinfood/` ao enviar commits para `main`. Em Settings → Pages, selecione GitHub Actions. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` como Actions Variables (ou a variável legada `VITE_SUPABASE_ANON_KEY`) e publique novamente. A chave publicável é destinada ao navegador e só é segura com RLS habilitado; nunca use `service_role`, token privado do Mercado Pago ou segredo de webhook no navegador.
 
 O repositório informado não estava presente como checkout nesta pasta e esta sessão não dispõe de conector MCP de GitHub. O workflow está pronto, mas push e ativação no GitHub precisam ocorrer numa cópia autenticada do repositório.
 
