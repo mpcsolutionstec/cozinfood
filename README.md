@@ -15,10 +15,11 @@ Sem `.env`, a interface carrega amostras locais; ações de escrita não são pe
 
 O workflow `.github/workflows/pages.yml` cria o build e publica em `https://mpcsolutionstec.github.io/cozinfood/` ao enviar commits para `main`. Em Settings → Pages, selecione GitHub Actions. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` como Actions Variables (ou a variável legada `VITE_SUPABASE_ANON_KEY`) e publique novamente. A chave publicável é destinada ao navegador e só é segura com RLS habilitado; nunca use `service_role`, token privado do Mercado Pago ou segredo de webhook no navegador.
 
-O repositório informado não estava presente como checkout nesta pasta e esta sessão não dispõe de conector MCP de GitHub. O workflow está pronto, mas push e ativação no GitHub precisam ocorrer numa cópia autenticada do repositório.
+O repositório foi publicado e o workflow do Pages está habilitado. Cadastre as variáveis publicáveis do Supabase para conectar a interface ao projeto.
 
 ## Escopo funcional desta base
 
+- Tela de cadastro e login com Supabase Auth; somente perfis ativos `admin` conseguem abrir o painel. O cadastro cria a identidade Auth, mas não concede papel administrativo nem associação a restaurante automaticamente.
 - Dashboard, mapa visual de mesas, fila KDS filtrável por setor, construtor demonstrativo de pizzas e quadro inicial de delivery.
 - SQL multi-tenant com entidades operacionais, RLS, Realtime, totalizadores e baixa de ficha técnica ao marcar item como entregue.
 - A tela ainda não implementa fluxo de caixa completo, formulário de abertura de pedido, fila offline sincronizada, geração de QR Pix dividido, menu público ou webhook real. Os botões/indicadores que aparecem como demonstração não representam transações concluídas.
@@ -26,6 +27,8 @@ O repositório informado não estava presente como checkout nesta pasta e esta s
 ## Arquitetura de produção
 
 Hospede somente o frontend no Pages. Use Supabase Auth/RLS para acesso por restaurante e Edge Functions (ou servidor próprio) para operações privilegiadas. Para Pix, a Edge Function cria a preferência/ordem no Mercado Pago com segredo guardado em secret do servidor, grava pagamento com referência idempotente e recebe webhook validado; o navegador só consulta estado no banco. Para WhatsApp, encaminhe eventos de estado para um provedor por função/server. Para QR público, implemente RPC com `SECURITY DEFINER` que valide token da mesa, calcule preços no banco e limite campos graváveis; não abra INSERT anônimo irrestrito nas tabelas de pedidos.
+
+Após o cadastro da primeira conta, um administrador deve associar o UUID Auth a uma linha de `profiles` com `restaurant_id` e papel `admin`; sem esse vínculo, o login exibe acesso pendente e não abre o painel. Configure também a URL de redirecionamento de confirmação de e-mail em Supabase Auth para o domínio do app.
 
 ## Pastas
 
