@@ -1,0 +1,203 @@
+.sidebar nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: #46556b transparent;
+}
+
+.sidebar nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: #46556b;
+}
+
+.brand,
+.restaurant,
+.nav-label,
+.sidebar-bottom {
+  flex-shrink: 0;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.theme-toggle .theme-switch {
+  width: 28px;
+  height: 16px;
+  margin-left: auto;
+  border: 1px solid #718096;
+  border-radius: 999px;
+  background: #344256;
+  position: relative;
+  transition: background-color 160ms ease;
+}
+
+.theme-toggle .theme-switch::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 160ms ease;
+}
+
+.theme-toggle .theme-switch.active {
+  border-color: #f47c4e;
+  background: #f47c4e;
+}
+
+.theme-toggle .theme-switch.active::after {
+  transform: translateX(12px);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  color: #e7edf5;
+  background: #101827;
+}
+
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] .main {
+  background: #101827;
+  color: #e7edf5;
+}
+
+:root[data-theme='dark'] .topbar,
+:root[data-theme='dark'] .stat,
+:root[data-theme='dark'] .panel,
+:root[data-theme='dark'] .table-modal,
+:root[data-theme='dark'] .pizza-modal,
+:root[data-theme='dark'] .pizza-product-card,
+:root[data-theme='dark'] .managed-table-card,
+:root[data-theme='dark'] .table-summary-card,
+:root[data-theme='dark'] .table-summary-total,
+:root[data-theme='dark'] .kds-ticket,
+:root[data-theme='dark'] .ticket {
+  border-color: #2c394d;
+  background-color: #182335;
+  color: #e7edf5;
+}
+
+:root[data-theme='dark'] .topbar,
+:root[data-theme='dark'] .foot {
+  border-color: #2c394d;
+}
+
+:root[data-theme='dark'] .crumb,
+:root[data-theme='dark'] .page-heading h1,
+:root[data-theme='dark'] .stat-value,
+:root[data-theme='dark'] .panel h1,
+:root[data-theme='dark'] .panel h2,
+:root[data-theme='dark'] .panel h3,
+:root[data-theme='dark'] .panel b,
+:root[data-theme='dark'] .panel strong,
+:root[data-theme='dark'] .panel label,
+:root[data-theme='dark'] .ticket,
+:root[data-theme='dark'] .kds-ticket,
+:root[data-theme='dark'] .managed-table-card,
+:root[data-theme='dark'] .pizza-product-card {
+  color: #e7edf5;
+}
+
+:root[data-theme='dark'] .page-heading p,
+:root[data-theme='dark'] .panel p,
+:root[data-theme='dark'] .panel small,
+:root[data-theme='dark'] .panel td,
+:root[data-theme='dark'] .panel th,
+:root[data-theme='dark'] .foot,
+:root[data-theme='dark'] .stat-top,
+:root[data-theme='dark'] .stat-foot {
+  color: #aab7c9;
+}
+
+:root[data-theme='dark'] input:not([type='checkbox']):not([type='radio']),
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] .select,
+:root[data-theme='dark'] .search-input,
+:root[data-theme='dark'] .pizza-search,
+:root[data-theme='dark'] .table-form-fields input,
+:root[data-theme='dark'] .table-form-fields select,
+:root[data-theme='dark'] .pizza-product-form-grid input,
+:root[data-theme='dark'] .pizza-product-form-grid select,
+:root[data-theme='dark'] .recipe-line input,
+:root[data-theme='dark'] .recipe-line select {
+  border-color: #3a4960;
+  background-color: #111b2a;
+  color: #e7edf5;
+}
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder {
+  color: #8290a4;
+}
+
+:root[data-theme='dark'] .table-wrap th,
+:root[data-theme='dark'] .table-wrap td,
+:root[data-theme='dark'] .inventory-table th,
+:root[data-theme='dark'] .inventory-table td {
+  border-color: #2c394d;
+}
+
+:root[data-theme='dark'] .mini-table,
+:root[data-theme='dark'] .floor-table,
+:root[data-theme='dark'] .pizza-size-editor,
+:root[data-theme='dark'] .pizza-size-row,
+:root[data-theme='dark'] .inventory-tabs,
+:root[data-theme='dark'] .recipe-cost-card,
+:root[data-theme='dark'] .recipe-line,
+:root[data-theme='dark'] .table-image-option,
+:root[data-theme='dark'] .kds-toolbar,
+:root[data-theme='dark'] .kds-ticket-footer,
+:root[data-theme='dark'] .ticket-item {
+  border-color: #2c394d;
+  background-color: #1d2a3e;
+  color: #e7edf5;
+}
+
+:root[data-theme='dark'] .mini-table.occupied,
+:root[data-theme='dark'] .floor-table.occupied {
+  border-color: #704b37;
+  background-color: #33271f;
+}
+
+:root[data-theme='dark'] .pizza-fractions-toggle,
+:root[data-theme='dark'] .inventory-readonly,
+:root[data-theme='dark'] .table-empty,
+:root[data-theme='dark'] .kds-empty-state,
+:root[data-theme='dark'] .pizza-empty {
+  background-color: #1d2a3e;
+  color: #aab7c9;
+}
+
+:root[data-theme='dark'] .pizza-modal > header,
+:root[data-theme='dark'] .table-modal > header,
+:root[data-theme='dark'] .user {
+  border-color: #2c394d;
+}
+
+:root[data-theme='dark'] .header-logout,
+:root[data-theme='dark'] .icon,
+:root[data-theme='dark'] .table-modal-close,
+:root[data-theme='dark'] .pizza-modal > header > button {
+  color: #c1ccda;
+}
+
+@media (max-height: 600px) {
+  .sidebar {
+    overflow: hidden;
+  }
+
+  .sidebar nav {
+    overscroll-behavior: contain;
+  }
+}
