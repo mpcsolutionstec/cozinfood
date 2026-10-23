@@ -19,7 +19,18 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm run build
+      - name: Build app
+        run: |
+          set +e
+          npm run build > /tmp/cozinfood-build.log 2>&1
+          result=$?
+          cat /tmp/cozinfood-build.log
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < /tmp/cozinfood-build.log
+            exit "$result"
+          fi
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
