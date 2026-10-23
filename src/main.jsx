@@ -7,4 +7,5 @@ import './auth.css';
 import './tables.css';
 import './kds.css';
 import './pizza.css';
+import './inventory.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><AuthGate><App /></AuthGate></React.StrictMode>);
