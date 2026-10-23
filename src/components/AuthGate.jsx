@@ -1,4 +1,4 @@
-import {createContext,useCallback,useContext,useEffect,useState} from 'react';
+import {createContext,useCallback,useContext,useEffect,useRef,useState} from 'react';
 import {ArrowRight,ChefHat,Eye,EyeOff,KeyRound,Mail,ShieldCheck,UserRound} from 'lucide-react';
 import {supabase,isSupabaseConfigured} from '../lib/supabaseClient';
 
