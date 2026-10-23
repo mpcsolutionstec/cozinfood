@@ -1,9 +1,97 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-const demo=[{id:'k1',name:'Pizza Calabresa',quantity:1,destination_sector:'forno_pizza',status:'em_preparo',created_at:new Date(Date.now()-420000).toISOString(),notes:'Sem cebola',order_id:'PED-1042'},{id:'k2',name:'X-Burger da Casa',quantity:2,destination_sector:'cozinha',status:'pendente',created_at:new Date(Date.now()-180000).toISOString(),notes:'1 sem picles',order_id:'PED-1043'},{id:'k3',name:'Suco de laranja',quantity:2,destination_sector:'bar',status:'pendente',created_at:new Date(Date.now()-60000).toISOString(),notes:'',order_id:'PED-1043'}];
-export function useKDSOrders(sector='all'){
- const [orders,setOrders]=useState(demo);
- useEffect(()=>{if(!supabase)return;let alive=true;const load=async()=>{let q=supabase.from('order_items').select('id,name,quantity,destination_sector,status,created_at,notes,order_id,orders(order_number)').in('status',['pendente','em_preparo','pronto']).order('created_at');if(sector!=='all')q=q.eq('destination_sector',sector);const {data}=await q;if(alive&&data)setOrders(data.map(x=>({...x,order_id:x.orders?.order_number??x.order_id})))};load();const ch=supabase.channel(`kds-${sector}`).on('postgres_changes',{event:'*',schema:'public',table:'order_items'},load).subscribe();return()=>{alive=false;supabase.removeChannel(ch)}},[sector]);
- const changeStatus=async(id,status)=>{if(!supabase)return setOrders(p=>p.map(x=>x.id===id?{...x,status}:x));const {error}=await supabase.from('order_items').update({status}).eq('id',id);if(error)throw error};
- return {orders,changeStatus,live:Boolean(supabase)};
+
+const activeStatuses = ['pendente', 'em_preparo', 'pronto'];
+const selectFields = 'id,name,product_id,quantity,destination_sector,status,created_at,started_at,ready_at,notes,fraction_label,flavors,additions,order_id,products(prep_minutes),orders(order_number,order_type,customer_name,table_id,tables(number))';
+
+function presentItem(item) {
+  const order = item.orders || {};
+  const relatedTable = order.tables;
+  return {
+    ...item,
+    order_number: order.order_number,
+    order_type: order.order_type,
+    customer_name: order.customer_name,
+    table_number: Array.isArray(relatedTable) ? relatedTable[0]?.number : relatedTable?.number,
+    prep_minutes: item.products?.prep_minutes || 15,
+  };
+}
+
+export function useKDSOrders(sector = 'all', channelScope = 'screen') {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(Boolean(supabase));
+  const [error, setError] = useState('');
+  const [connected, setConnected] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!supabase) return { error: new Error('Supabase não está configurado.') };
+    setLoading(true);
+    let query = supabase
+      .from('order_items')
+      .select(selectFields)
+      .in('status', activeStatuses)
+      .order('created_at', { ascending: true });
+    if (sector !== 'all') query = query.eq('destination_sector', sector);
+    const { data, error: queryError } = await query;
+    if (queryError) {
+      setError(queryError.message);
+      setLoading(false);
+      return { error: queryError };
+    }
+    setOrders((data || []).map(presentItem));
+    setError('');
+    setLoading(false);
+    return { error: null };
+  }, [sector]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let active = true;
+    setLoading(true);
+    setOrders([]);
+    const load = async () => {
+      let query = supabase
+        .from('order_items')
+        .select(selectFields)
+        .in('status', activeStatuses)
+        .order('created_at', { ascending: true });
+      if (sector !== 'all') query = query.eq('destination_sector', sector);
+      const { data, error: queryError } = await query;
+      if (!active) return;
+      if (queryError) setError(queryError.message);
+      else {
+        setOrders((data || []).map(presentItem));
+        setError('');
+      }
+      setLoading(false);
+    };
+
+    load();
+    const channel = supabase
+      .channel(`kds-${channelScope}-${sector}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, load)
+      .subscribe(status => setConnected(status === 'SUBSCRIBED'));
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [channelScope, sector]);
+
+  const changeStatus = useCallback(async (ids, status) => {
+    if (!supabase) throw new Error('Supabase não está configurado.');
+    const itemIds = Array.isArray(ids) ? ids : [ids];
+    const updates = { status };
+    const now = new Date().toISOString();
+    if (status === 'em_preparo') updates.started_at = now;
+    if (status === 'pronto') updates.ready_at = now;
+    const { error: updateError } = await supabase
+      .from('order_items')
+      .update(updates)
+      .in('id', itemIds);
+    if (updateError) throw updateError;
+    return refresh();
+  }, [refresh]);
+
+  return { orders, changeStatus, refresh, loading, error, live: connected };
 }
