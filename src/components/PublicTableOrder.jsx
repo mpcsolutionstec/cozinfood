@@ -1,0 +1,97 @@
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, ChefHat, Minus, Plus, Send, ShoppingBag, Utensils } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+
+const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const orderStatusLabel = { pendente: 'Recebido pelo restaurante', em_preparo: 'Em preparo', pronto: 'Pronto para servir', entregue: 'Finalizado', cancelado: 'Cancelado' };
+
+export default function PublicTableOrder({ qrToken }) {
+  const [menu, setMenu] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [categoryId, setCategoryId] = useState('all');
+  const [cart, setCart] = useState([]);
+  const [customerName, setCustomerName] = useState('');
+  const [orderNote, setOrderNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+  const [liveStatus, setLiveStatus] = useState(null);
+
+  const loadMenu = async () => {
+    setLoading(true);
+    setError('');
+    if (!supabase) {
+      setError('O cardápio ainda não está conectado ao Supabase. Avise o restaurante.');
+      setLoading(false);
+      return;
+    }
+    const { data, error: menuError } = await supabase.rpc('get_public_table_menu', { p_qr_token: qrToken });
+    if (menuError) setError(`Não foi possível abrir o cardápio: ${menuError.message}`);
+    else if (!data) setError('Este QR Code não é válido. Peça ajuda a um atendente.');
+    else setMenu(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadMenu(); }, [qrToken]);
+  useEffect(() => {
+    if (!receipt?.order_id) return undefined;
+    let active = true;
+    const refreshStatus = async () => {
+      const { data } = await supabase.rpc('get_public_table_order_status', { p_qr_token: qrToken, p_order_id: receipt.order_id });
+      if (active && data) setLiveStatus(data);
+    };
+    refreshStatus();
+    const timer = window.setInterval(refreshStatus, 8000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [qrToken, receipt?.order_id]);
+
+  const products = useMemo(() => (menu?.categories || []).filter(category => categoryId === 'all' || category.id === categoryId).flatMap(category => category.products || []), [menu, categoryId]);
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * Number(item.fraction?.price ?? item.product.base_price), 0), [cart]);
+
+  const addProduct = (product, fraction = null) => {
+    const key = `${product.id}:${fraction?.id || 'base'}`;
+    setCart(items => {
+      const existing = items.find(item => item.key === key);
+      if (existing) return items.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...items, { key, product, fraction, quantity: 1, notes: '' }];
+    });
+  };
+  const changeQuantity = (key, amount) => setCart(items => items.map(item => item.key === key ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item).filter(item => item.quantity > 0));
+  const changeNote = (key, notes) => setCart(items => items.map(item => item.key === key ? { ...item, notes } : item));
+
+  const submitOrder = async event => {
+    event.preventDefault();
+    if (!cart.length) return;
+    setSending(true);
+    setError('');
+    const { data, error: submitError } = await supabase.rpc('submit_table_order', {
+      p_qr_token: qrToken,
+      p_customer_name: customerName,
+      p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.fraction?.id || null, quantity: item.quantity, notes: item.notes })),
+      p_notes: orderNote,
+    });
+    if (submitError) setError(`Não foi possível enviar. ${submitError.message}`);
+    else {
+      setReceipt(data);
+      setLiveStatus(null);
+      setCart([]);
+      setOrderNote('');
+    }
+    setSending(false);
+  };
+
+  if (loading) return <main className="qr-order-page"><div className="qr-loading"><span className="auth-spinner"/> Abrindo cardápio...</div></main>;
+
+  return <main className="qr-order-page"><header className="qr-order-header"><div className="qr-brand"><span><ChefHat size={21}/></span><div><b>{menu?.restaurant_name || 'COZINFOOD'}</b><small>Cardápio digital</small></div></div>{menu && <div className="qr-table-badge"><Utensils size={15}/> Mesa {menu.table_number}</div>}</header>
+    {error && !menu ? <section className="qr-error"><h1>Não conseguimos abrir este cardápio</h1><p>{error}</p><button className="primary" onClick={loadMenu}>Tentar novamente</button></section> : menu && <>
+      <section className="qr-welcome"><span>SEJA BEM-VINDO</span><h1>Faça seu pedido à mesa</h1><p>Escolha os itens. A equipe recebe seu pedido na hora.</p></section>
+      {error && <div className="qr-inline-error" role="alert">{error}</div>}
+      {receipt && <section className="qr-receipt" aria-live="polite"><div><CheckCircle2 size={21}/><div><b>Pedido #{receipt.order_number} enviado</b><span>{orderStatusLabel[liveStatus?.status] || 'Aguardando confirmação da cozinha'} · Mesa {menu.table_number}</span></div></div><strong>{money(liveStatus?.total ?? receipt.total)}</strong>{liveStatus?.items?.length > 0 && <ul>{liveStatus.items.map((item,index)=><li key={`${item.name}-${index}`}>{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}<small>{orderStatusLabel[item.status] || item.status}</small></li>)}</ul>}<button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button></section>}
+      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
+        <aside className="qr-cart"><header><h2><ShoppingBag size={17}/> Seu pedido</h2><span>{cart.length} item(ns)</span></header>{cart.length ? <div className="qr-cart-items">{cart.map(item => <article key={item.key}><div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><span>{money(item.fraction?.price ?? item.product.base_price)} cada</span><input value={item.notes} onChange={event => changeNote(item.key, event.target.value)} placeholder="Observação opcional" maxLength={300}/></div><div className="qr-quantity"><button onClick={() => changeQuantity(item.key, -1)} aria-label="Diminuir"><Minus size={13}/></button><b>{item.quantity}</b><button onClick={() => changeQuantity(item.key, 1)} aria-label="Aumentar"><Plus size={13}/></button></div></article>)}</div> : <p className="qr-cart-empty">Toque nos itens para adicioná-los aqui.</p>}
+          <form onSubmit={submitOrder}><label>Seu nome (opcional)<input value={customerName} onChange={event => setCustomerName(event.target.value)} placeholder="Como podemos chamar você?" maxLength={80}/></label><label>Observação do pedido<input value={orderNote} onChange={event => setOrderNote(event.target.value)} placeholder="Ex.: sem gelo" maxLength={1000}/></label><div className="qr-cart-total"><span>Total do pedido</span><b>{money(cartTotal)}</b></div><button className="primary" disabled={sending || cart.length === 0}><Send size={15}/>{sending ? 'Enviando...' : 'Enviar pedido'}</button><small>O pagamento será feito com a equipe do restaurante.</small></form>
+        </aside></div>}
+    </>}
+    <footer className="qr-order-footer">COZINFOOD · Atendimento digital à mesa</footer>
+  </main>;
+}

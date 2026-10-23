@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Armchair, Check, Pencil, Plus, Trash2, Users, X } from 'lucide-react';
+import { Armchair, Check, Pencil, Plus, QrCode, ShoppingBasket, Trash2, Users, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
+import TableService from './TableService';
 
 const tableTypes = [
   { key: 'round_2', name: 'Redonda', seats: '2 lugares', image: 'mesa-redonda-2.svg' },
@@ -21,12 +23,16 @@ const emptyForm = { number: '', capacity: 4, status: 'livre', image_key: 'square
 
 export default function TablesManager({ tables, loading, loadError, refresh }) {
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [dialog, setDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const [serviceTable, setServiceTable] = useState(null);
+  const [qrTable, setQrTable] = useState(null);
+  const [copiedQr, setCopiedQr] = useState(false);
 
   const counts = useMemo(() => ({
     livre: tables.filter(table => table.status === 'livre').length,
@@ -108,10 +114,25 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     setNotice(`Mesa ${table.number} excluída.`);
   };
 
+  const qrMenuUrl = table => {
+    const url = new URL(import.meta.env.BASE_URL, window.location.origin);
+    url.searchParams.set('mesa', table.qr_token);
+    return url.toString();
+  };
+  const copyQrLink = async table => {
+    try {
+      await navigator.clipboard.writeText(qrMenuUrl(table));
+      setCopiedQr(true);
+      window.setTimeout(() => setCopiedQr(false), 2200);
+    } catch {
+      setNotice('Não foi possível copiar automaticamente. Selecione o endereço do QR Code para copiar.');
+    }
+  };
+
   return <>
     <div className="page-heading tables-heading">
       <div><h1>Salão e mesas</h1><p>Cadastre o salão e acompanhe a situação das mesas em tempo real.</p></div>
-      <button className="primary" onClick={openNew}><Plus size={15}/> Nova mesa</button>
+      {isAdmin && <button className="primary" onClick={openNew}><Plus size={15}/> Nova mesa</button>}
     </div>
 
     <div className="table-status-summary">
@@ -126,7 +147,7 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     {loading ? <div className="table-loading"><span className="auth-spinner"/>Carregando mesas...</div> : tables.length === 0 ? <section className="panel table-empty">
       <div className="table-empty-icon"><Armchair size={27}/></div><h2>Seu salão ainda não tem mesas</h2>
       <p>Cadastre a primeira mesa, defina quantos lugares ela tem e escolha uma imagem para o mapa.</p>
-      <button className="primary" onClick={openNew}><Plus size={15}/> Cadastrar primeira mesa</button>
+      {isAdmin && <button className="primary" onClick={openNew}><Plus size={15}/> Cadastrar primeira mesa</button>}
     </section> : <div className="managed-table-grid">
       {tables.map(table => {
         const image = tableTypes.find(type => type.key === table.image_key) || tableTypes[1];
@@ -138,12 +159,13 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
           <div className="managed-table-info"><div><h2>Mesa {table.number}</h2><span><Users size={13}/> {table.capacity} lugares · {image.name}</span></div>
             <strong className={Number(table.current_total) > 0 ? 'has-balance' : ''}>{money(table.current_total)}</strong>
           </div>
-          <div className="managed-table-actions"><button onClick={() => openEdit(table)}><Pencil size={14}/> Editar</button>
-            <button className="delete-table-button" onClick={() => deleteTable(table)}><Trash2 size={14}/> Excluir</button></div>
+          <div className="managed-table-actions"><button className="table-service-action" onClick={() => setServiceTable(table)}><ShoppingBasket size={14}/> Atender</button><button className="table-qr-action" onClick={() => { setQrTable(table); setCopiedQr(false); }}><QrCode size={14}/> QR Code</button>{isAdmin && <><button onClick={() => openEdit(table)}><Pencil size={14}/> Editar</button><button className="delete-table-button" onClick={() => deleteTable(table)}><Trash2 size={14}/> Excluir</button></>}</div>
         </article>;
       })}
     </div>}
 
+    {serviceTable && <TableService table={serviceTable} profile={profile} onClose={() => setServiceTable(null)} onChanged={refresh}/>}
+    {qrTable && <div className="table-modal-backdrop qr-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setQrTable(null); }}><section className="table-modal table-qr-modal" role="dialog" aria-modal="true" aria-labelledby="table-qr-title"><header><div><span className="table-modal-icon"><QrCode size={18}/></span><div><h2 id="table-qr-title">QR Code · Mesa {qrTable.number}</h2><p>Cliente abre o cardápio e envia o pedido direto para a mesa.</p></div></div><button className="table-modal-close" onClick={() => setQrTable(null)} aria-label="Fechar"><X size={19}/></button></header><div className="table-qr-content"><div className="table-qr-code"><QRCodeSVG value={qrMenuUrl(qrTable)} size={210} level="H" includeMargin/></div><label>Endereço do cardápio<input readOnly value={qrMenuUrl(qrTable)} onFocus={event => event.target.select()}/></label><div className="table-qr-actions"><button className="table-cancel-button" onClick={() => window.print()}>Imprimir QR Code</button><button className="primary" onClick={() => copyQrLink(qrTable)}>{copiedQr ? <><Check size={14}/> Link copiado</> : 'Copiar link'}</button></div></div></section></div>}
     {dialog && <div className="table-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setDialog(false); }}>
       <section className="table-modal" role="dialog" aria-modal="true" aria-labelledby="table-modal-title">
         <header><div><span className="table-modal-icon"><Armchair size={18}/></span><div><h2 id="table-modal-title">{editingId ? 'Editar mesa' : 'Cadastrar mesa'}</h2><p>Escolha a imagem e os detalhes da mesa.</p></div></div>
