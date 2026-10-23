@@ -1,3 +1,57 @@
-import { useEffect,useState } from 'react';import {supabase} from '../lib/supabaseClient';
-const demo=Array.from({length:12},(_,i)=>({id:`t${i+1}`,number:i+1,status:[1,4,8].includes(i+1)?'ocupada':'livre',current_total:[1,4,8].includes(i+1)?62+i*7:0}));
-export function useTableStatus(){const [tables,setTables]=useState(demo);useEffect(()=>{if(!supabase)return;let alive=true;const load=async()=>{const {data}=await supabase.from('tables').select('id,number,status,current_total').order('number');if(alive&&data)setTables(data)};load();const ch=supabase.channel('tables-live').on('postgres_changes',{event:'*',schema:'public',table:'tables'},load).subscribe();return()=>{alive=false;supabase.removeChannel(ch)}},[]);return {tables,live:Boolean(supabase)}}
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
+const columns = 'id,number,status,current_total,capacity,image_key,qr_token,created_at';
+
+export function useTableStatus() {
+  const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(Boolean(supabase));
+  const [error, setError] = useState('');
+
+  const refresh = useCallback(async () => {
+    if (!supabase) return { error: new Error('Supabase não está configurado.') };
+    setLoading(true);
+    const { data, error: queryError } = await supabase
+      .from('tables')
+      .select(columns)
+      .order('number');
+    if (queryError) {
+      setError(queryError.message);
+      setLoading(false);
+      return { error: queryError };
+    }
+    setTables(data || []);
+    setError('');
+    setLoading(false);
+    return { error: null };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let active = true;
+    const load = async () => {
+      const { data, error: queryError } = await supabase
+        .from('tables')
+        .select(columns)
+        .order('number');
+      if (!active) return;
+      if (queryError) setError(queryError.message);
+      else {
+        setTables(data || []);
+        setError('');
+      }
+      setLoading(false);
+    };
+    load();
+    const channel = supabase
+      .channel('tables-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, load)
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { tables, live: Boolean(supabase), loading, error, refresh };
+}
