@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChefHat, CircleDollarSign, Edit3, Plus, Pizza, Search, Trash2, Wheat, X } from 'lucide-react';
+import { Check, ChefHat, CircleDollarSign, Edit3, ImagePlus, Plus, Pizza, Search, Trash2, Upload, Wheat, X } from 'lucide-react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
 
@@ -23,7 +23,7 @@ const formatError = error => error?.code === '23505' ? 'Já existe um item com e
 function emptyProduct() {
   return {
     category_slug: 'pizzas', name: '', description: '', accepts_fractions: true,
-    prep_minutes: 15, active: true,
+    prep_minutes: 15, active: true, image_path: '',
     sizes: Object.fromEntries(sizeDefinitions.map(size => [size.name, { price: '', active: true }])),
   };
 }
@@ -45,6 +45,8 @@ export default function PizzaMenuManager() {
   const [productDialog, setProductDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState(emptyProduct);
+  const [productImageFile, setProductImageFile] = useState(null);
+  const [productImagePreview, setProductImagePreview] = useState('');
   const [borderDialog, setBorderDialog] = useState(false);
   const [editingBorder, setEditingBorder] = useState(null);
   const [borderForm, setBorderForm] = useState({ name: '', price: '', active: true });
@@ -54,6 +56,10 @@ export default function PizzaMenuManager() {
   const [flavorCount, setFlavorCount] = useState(2);
   const [flavorIds, setFlavorIds] = useState(['', '', '', '']);
   const [borderId, setBorderId] = useState('');
+
+  useEffect(() => () => {
+    if (productImagePreview.startsWith('blob:')) URL.revokeObjectURL(productImagePreview);
+  }, [productImagePreview]);
 
   const loadCatalog = async () => {
     if (!restaurantId) {
@@ -73,7 +79,7 @@ export default function PizzaMenuManager() {
       return;
     }
     const [productsResult, bordersResult, restaurantResult] = await Promise.all([
-      supabase.from('products').select('id,restaurant_id,category_id,name,description,base_price,accepts_fractions,prep_minutes,destination_sector,active,categories(name,slug),product_fractions(id,name,serves,price,active)').eq('restaurant_id', restaurantId).order('name'),
+      supabase.from('products').select('id,restaurant_id,category_id,name,description,base_price,image_path,accepts_fractions,prep_minutes,destination_sector,active,categories(name,slug),product_fractions(id,name,serves,price,active)').eq('restaurant_id', restaurantId).order('name'),
       supabase.from('pizza_borders').select('id,name,price,active').eq('restaurant_id', restaurantId).order('name'),
       supabase.from('restaurants').select('id,name,fraction_pricing').eq('id', restaurantId).single(),
     ]);
@@ -115,6 +121,8 @@ export default function PizzaMenuManager() {
   const openCreateProduct = () => {
     setEditingProduct(null);
     setProductForm(emptyProduct());
+    setProductImageFile(null);
+    setProductImagePreview('');
     setProductDialog(true);
   };
 
@@ -131,9 +139,35 @@ export default function PizzaMenuManager() {
       accepts_fractions: product.accepts_fractions,
       prep_minutes: product.prep_minutes,
       active: product.active,
+      image_path: product.image_path || '',
       sizes,
     });
+    setProductImageFile(null);
+    setProductImagePreview(product.image_path ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '');
     setProductDialog(true);
+  };
+
+  const chooseProductImage = event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Use uma imagem JPG, PNG ou WEBP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('A foto deve ter no máximo 5 MB.');
+      return;
+    }
+    setError('');
+    setProductImageFile(file);
+    setProductImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeProductImage = () => {
+    setProductImageFile(null);
+    setProductImagePreview('');
+    setProductForm(current => ({ ...current, image_path: '' }));
   };
 
   const saveProduct = async event => {
@@ -154,6 +188,7 @@ export default function PizzaMenuManager() {
       category_id: category.id,
       name: productForm.name.trim(),
       description: productForm.description.trim() || null,
+      image_path: productForm.image_path || null,
       base_price: basePrice,
       accepts_fractions: productForm.accepts_fractions,
       prep_minutes: Number(productForm.prep_minutes),
@@ -169,6 +204,32 @@ export default function PizzaMenuManager() {
       const result = await supabase.from('products').insert(productValues).select('id').single();
       savedProduct = result.data;
       if (result.error) { setError(`Não foi possível cadastrar o produto: ${formatError(result.error)}`); setBusy(false); return; }
+    }
+    const previousImagePath = editingProduct?.image_path || null;
+    let savedImagePath = productForm.image_path || null;
+    if (productImageFile) {
+      const extension = productImageFile.type === 'image/png' ? 'png' : productImageFile.type === 'image/webp' ? 'webp' : 'jpg';
+      const objectPath = `${restaurantId}/${savedProduct.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from('product-images').upload(objectPath, productImageFile, { contentType: productImageFile.type, cacheControl: '3600', upsert: false });
+      if (uploadError) {
+        setBusy(false);
+        await loadCatalog();
+        setError(`O produto foi salvo, mas a foto não pôde ser enviada: ${formatError(uploadError)}`);
+        return;
+      }
+      const { error: imageSaveError } = await supabase.from('products').update({ image_path: objectPath }).eq('id', savedProduct.id).eq('restaurant_id', restaurantId);
+      if (imageSaveError) {
+        await supabase.storage.from('product-images').remove([objectPath]);
+        setBusy(false);
+        await loadCatalog();
+        setError(`O produto foi salvo, mas não foi possível vincular a foto: ${formatError(imageSaveError)}`);
+        return;
+      }
+      savedImagePath = objectPath;
+    }
+    if (previousImagePath && previousImagePath !== savedImagePath) {
+      const { error: removeError } = await supabase.storage.from('product-images').remove([previousImagePath]);
+      if (removeError) setNotice('Produto salvo. A foto antiga não pôde ser removida do armazenamento.');
     }
     const fractionRows = sizeDefinitions.map(size => ({
       product_id: savedProduct.id,
@@ -186,6 +247,8 @@ export default function PizzaMenuManager() {
     }
     setBusy(false);
     setProductDialog(false);
+    setProductImageFile(null);
+    setProductImagePreview('');
     setNotice(editingProduct ? 'Produto atualizado.' : 'Produto cadastrado.');
     await loadCatalog();
   };
@@ -253,7 +316,9 @@ export default function PizzaMenuManager() {
       <div className="pizza-catalog-toolbar"><div className="pizza-category-tabs">{categoryDefinitions.map(category => <button key={category.slug} className={categoryFilter === category.slug ? 'active' : ''} onClick={() => setCategoryFilter(category.slug)}>{category.slug === 'pizzas' ? <Pizza size={15}/> : <Wheat size={15}/>} {category.name}<b>{products.filter(product => product.categories?.slug === category.slug).length}</b></button>)}</div><label className="pizza-search"><Search size={15}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar sabor"/></label></div>
       {filteredProducts.length ? <div className="pizza-product-grid">{filteredProducts.map(product => {
         const activeSizes = sizeDefinitions.map(size => product.product_fractions?.find(fraction => fraction.name === size.name && fraction.active)).filter(Boolean);
+        const productImageUrl = product.image_path ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '';
         return <article className={`pizza-product-card ${product.active ? '' : 'inactive'}`} key={product.id}>
+          <div className={`pizza-product-photo ${productImageUrl ? 'has-image' : ''}`}>{productImageUrl ? <img src={productImageUrl} alt={product.name} loading="lazy"/> : <span>{product.categories?.slug === 'esfihas' ? <Wheat size={25}/> : <Pizza size={25}/>}<small>Adicione uma foto</small></span>}</div>
           <div className="pizza-product-card-top"><span className="pizza-product-icon">{product.categories?.slug === 'esfihas' ? <Wheat size={18}/> : <Pizza size={18}/>}</span><span className={`pizza-active-pill ${product.active ? '' : 'off'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></div>
           <h2>{product.name}</h2><p className="pizza-product-description">{product.description || 'Sem descrição cadastrada.'}</p>
           <div className="pizza-size-prices">{activeSizes.length ? activeSizes.map(size => <div key={size.name}><span>{size.name}</span><b>{money(size.price)}</b></div>) : <span className="no-sizes">Nenhum tamanho ativo</span>}</div>
@@ -278,6 +343,7 @@ export default function PizzaMenuManager() {
 
     {productDialog && <div className="pizza-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setProductDialog(false); }}><section className="pizza-modal" role="dialog" aria-modal="true" aria-labelledby="pizza-product-form-title"><header><div><span className="pizza-modal-icon"><Pizza size={18}/></span><div><h2 id="pizza-product-form-title">{editingProduct ? 'Editar sabor' : 'Cadastrar sabor'}</h2><p>Defina os preços por tamanho e os dados de preparo.</p></div></div><button onClick={() => setProductDialog(false)} aria-label="Fechar" disabled={busy}><X size={18}/></button></header>
       <form onSubmit={saveProduct}><div className="pizza-product-form-grid"><label>Tipo<select value={productForm.category_slug} onChange={event => setProductField('category_slug', event.target.value)}>{categoryDefinitions.map(category => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select></label><label>Nome do sabor<input value={productForm.name} onChange={event => setProductField('name', event.target.value)} placeholder={productForm.category_slug === 'pizzas' ? 'Ex.: Calabresa' : 'Ex.: Carne'} maxLength={100} required/></label><label>Tempo de preparo (min)<input type="number" min="0" max="240" value={productForm.prep_minutes} onChange={event => setProductField('prep_minutes', event.target.value)} required/></label><label className="pizza-product-active"><input type="checkbox" checked={productForm.active} onChange={event => setProductField('active', event.target.checked)}/> Disponível no cardápio</label><label className="pizza-description-field">Descrição<input value={productForm.description} onChange={event => setProductField('description', event.target.value)} placeholder="Ingredientes ou detalhes do sabor" maxLength={300}/></label></div>
+        <section className="pizza-image-upload"><div><b>Foto do produto</b><span>JPG, PNG ou WEBP · até 5 MB</span></div><div className="pizza-image-upload-row">{productImagePreview ? <img src={productImagePreview} alt="Pré-visualização do produto"/> : <span className="pizza-image-placeholder"><ImagePlus size={23}/></span>}<div><label className="pizza-image-select"><Upload size={14}/>{productImagePreview ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseProductImage} disabled={busy}/></label>{productImagePreview && <button type="button" className="pizza-image-remove" onClick={removeProductImage} disabled={busy}>Remover foto</button>}</div></div></section>
         <div className="pizza-size-editor"><div className="pizza-size-editor-heading"><b>Preços por tamanho</b><span>O menor preço ativo será o preço base.</span></div>{sizeDefinitions.map(size => <div className={`pizza-size-row ${productForm.sizes[size.name].active ? '' : 'disabled'}`} key={size.name}><label><input type="checkbox" checked={productForm.sizes[size.name].active} onChange={event => setSizeField(size.name, 'active', event.target.checked)}/><span>{size.name}</span></label><small>Serve {size.serves}</small><span className="currency-input"><i>R$</i><input type="number" min="0" step="0.01" value={productForm.sizes[size.name].price} onChange={event => setSizeField(size.name, 'price', event.target.value)} placeholder="0,00" disabled={!productForm.sizes[size.name].active} required={productForm.sizes[size.name].active}/></span></div>)}</div>
         <label className="pizza-fractions-toggle"><input type="checkbox" checked={productForm.accepts_fractions} onChange={event => setProductField('accepts_fractions', event.target.checked)}/><span><b>Permitir este sabor em pizzas fracionadas</b><small>O sabor será oferecido no simulador de frações.</small></span></label>
         <footer><button type="button" className="pizza-modal-cancel" onClick={() => setProductDialog(false)} disabled={busy}>Cancelar</button><button className="primary" disabled={busy}>{busy ? 'Salvando...' : editingProduct ? 'Salvar alterações' : `Cadastrar ${productFormName}`}</button></footer>

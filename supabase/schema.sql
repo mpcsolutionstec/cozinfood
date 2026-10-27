@@ -804,3 +804,30 @@ grant execute on function public.submit_table_order(text, text, jsonb, text, uui
 grant execute on function public.get_public_table_order_status(text, uuid) to anon, authenticated;
 grant execute on function public.get_public_digital_menu(text) to anon, authenticated;
 grant execute on function public.submit_digital_menu_order(text, text, text, jsonb, text, uuid) to anon, authenticated;
+
+-- Fotos publicas dos produtos; somente administradores do restaurante podem alterar arquivos.
+insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
+values ('product-images', 'product-images', true, 5242880, array['image/jpeg','image/png','image/webp']::text[])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists product_images_public_read on storage.objects;
+create policy product_images_public_read on storage.objects
+for select using (bucket_id = 'product-images');
+
+drop policy if exists product_images_admin_insert on storage.objects;
+create policy product_images_admin_insert on storage.objects
+for insert to authenticated
+with check (
+  bucket_id = 'product-images'
+  and (storage.foldername(name))[1] = public.current_restaurant_id()::text
+  and public.has_role(array['admin']::public.app_role[])
+);
+
+drop policy if exists product_images_admin_delete on storage.objects;
+create policy product_images_admin_delete on storage.objects
+for delete to authenticated
+using (
+  bucket_id = 'product-images'
+  and (storage.foldername(name))[1] = public.current_restaurant_id()::text
+  and public.has_role(array['admin']::public.app_role[])
+);

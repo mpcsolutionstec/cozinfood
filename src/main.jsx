@@ -10,6 +10,7 @@ import './auth.css';
 import './tables.css';
 import './kds.css';
 import './pizza.css';
+import './pizza-photos.css';
 import './inventory.css';
 import './salon-service.css';
 import './theme.css';
