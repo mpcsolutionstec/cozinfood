@@ -873,6 +873,295 @@
   font-size: 8px;
 }
 
+/* Leitura confortavel no autoatendimento por QR Code. */
+@media (max-width: 760px) {
+  .qr-order-page {
+    padding: 0 14px 28px;
+    background: #fff8f0;
+  }
+
+  .qr-order-header {
+    height: 68px;
+    border-color: #f1dfd1;
+  }
+
+  .qr-brand b {
+    font-size: 16px;
+  }
+
+  .qr-brand small {
+    font-size: 11px;
+  }
+
+  .qr-table-badge {
+    padding: 9px 12px;
+    border-color: #f0dfd2;
+    background: #fff;
+    color: #93502e;
+    font-size: 12px;
+  }
+
+  .qr-welcome {
+    margin: 25px auto 20px;
+  }
+
+  .qr-welcome > span {
+    color: #d85d35;
+    font-size: 12px;
+    letter-spacing: 1.6px;
+  }
+
+  .qr-welcome h1 {
+    margin: 9px 0 7px;
+    color: #26374a;
+    font-size: clamp(27px, 7vw, 34px);
+    line-height: 1.14;
+  }
+
+  .qr-welcome p {
+    color: #657488;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .qr-menu-section,
+  .qr-cart {
+    border-color: #eee1d6;
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: 0 8px 24px #61391b0d;
+  }
+
+  .qr-menu-section {
+    padding: 16px;
+  }
+
+  .qr-category-list {
+    gap: 9px;
+    padding-bottom: 13px;
+    border-color: #f0e8e0;
+  }
+
+  .qr-category-list button {
+    min-height: 42px;
+    padding: 0 17px;
+    border-color: #eadfd6;
+    background: #fffaf6;
+    color: #566477;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .qr-category-list button.active {
+    border-color: #e76f43;
+    background: #e76f43;
+    color: #fff;
+    box-shadow: 0 5px 12px #e76f4333;
+  }
+
+  .qr-products {
+    gap: 14px;
+    padding-top: 14px;
+  }
+
+  .qr-product-card {
+    padding: 14px;
+    border-color: #eee5dc;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 4px 13px #5f40200b;
+  }
+
+  .qr-product-copy b {
+    color: #26384c;
+    font-size: 17px;
+    line-height: 1.3;
+  }
+
+  .qr-product-copy p {
+    margin-top: 7px;
+    color: #68778a;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .qr-product-fractions {
+    gap: 8px;
+    margin-top: 13px;
+  }
+
+  .qr-product-fractions button {
+    min-height: 48px;
+    padding: 10px 12px;
+    border-color: #f1d8c9;
+    border-radius: 9px;
+    background: #fff8f3;
+    color: #604c40;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .qr-product-fractions button b {
+    gap: 7px;
+    color: #c94f2e;
+    font-size: 15px;
+  }
+
+  .qr-product-fractions button b svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .qr-product-add {
+    min-height: 46px;
+    margin-top: 12px;
+    color: #bd4f30;
+    font-size: 16px;
+  }
+
+  .qr-product-add span {
+    width: 35px;
+    height: 35px;
+    border-radius: 10px;
+    background: #e76f43;
+    color: white;
+  }
+
+  .qr-product-add span svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .qr-product-photo {
+    height: 190px;
+    margin: -14px -14px 13px;
+    width: calc(100% + 28px);
+  }
+
+  .qr-cart header {
+    padding: 16px;
+    border-color: #f0e8e0;
+  }
+
+  .qr-cart header h2 {
+    color: #26384c;
+    font-size: 17px;
+  }
+
+  .qr-cart header > span,
+  .qr-cart-items article span {
+    color: #66768a;
+    font-size: 12px;
+  }
+
+  .qr-cart-items {
+    padding: 0 15px;
+  }
+
+  .qr-cart-items article {
+    gap: 10px;
+    padding: 13px 0;
+    border-color: #f0e8e0;
+  }
+
+  .qr-cart-items article b {
+    color: #293b50;
+    font-size: 13px;
+  }
+
+  .qr-cart input {
+    height: 43px;
+    font-size: 14px;
+  }
+
+  .qr-quantity {
+    height: 36px;
+    gap: 8px;
+  }
+
+  .qr-quantity button {
+    width: 27px;
+    height: 27px;
+    color: #c95634;
+  }
+
+  .qr-quantity b {
+    font-size: 13px;
+  }
+
+  .qr-cart form {
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .qr-cart form label {
+    gap: 7px;
+    color: #526278;
+    font-size: 12px;
+  }
+
+  .qr-cart form > .primary {
+    min-height: 50px;
+    border: 0;
+    border-radius: 10px;
+    background: #e76f43;
+    box-shadow: 0 6px 15px #e76f4330;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .qr-cart-total {
+    color: #526278;
+    font-size: 14px;
+  }
+
+  .qr-cart-total b {
+    color: #b9472b;
+    font-size: 21px;
+  }
+
+  .qr-cart form > small {
+    color: #738195;
+    font-size: 11px;
+  }
+
+  .qr-cart-empty {
+    padding: 19px 15px;
+    color: #718096;
+    font-size: 13px;
+  }
+
+  :root[data-theme='dark'] .qr-order-page {
+    background: #111a28;
+  }
+
+  :root[data-theme='dark'] .qr-welcome p,
+  :root[data-theme='dark'] .qr-cart header > span,
+  :root[data-theme='dark'] .qr-cart-items article span,
+  :root[data-theme='dark'] .qr-cart form label,
+  :root[data-theme='dark'] .qr-cart-total,
+  :root[data-theme='dark'] .qr-cart form > small {
+    color: #b7c3d2;
+  }
+
+  :root[data-theme='dark'] .qr-category-list button {
+    border-color: #39465a;
+    background: #202d3e;
+    color: #e4eaf2;
+  }
+
+  :root[data-theme='dark'] .qr-category-list button.active {
+    border-color: #e76f43;
+    background: #e76f43;
+    color: #fff;
+  }
+
+  :root[data-theme='dark'] .qr-product-fractions button {
+    border-color: #694a3d;
+    background: #2b2830;
+  }
+}
+
 :root[data-theme='dark'] .service-panel,
 :root[data-theme='dark'] .qr-order-page {
   background: #101827;
