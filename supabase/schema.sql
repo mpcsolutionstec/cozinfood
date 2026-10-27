@@ -402,6 +402,7 @@ begin
                 'name', p.name,
                 'description', p.description,
                 'base_price', p.base_price,
+                'image_path', p.image_path,
                 'accepts_fractions', p.accepts_fractions,
                 'destination_sector', p.destination_sector,
                 'fractions', coalesce((

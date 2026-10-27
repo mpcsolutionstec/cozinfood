@@ -5,6 +5,7 @@ import AuthGate from './components/AuthGate.jsx';
 import PublicTableOrder from './components/PublicTableOrder.jsx';
 import PublicDigitalMenu from './components/PublicDigitalMenu.jsx';
 import './digital-menu.css';
+import './product-menu-photos.css';
 import './styles.css';
 import './auth.css';
 import './tables.css';
