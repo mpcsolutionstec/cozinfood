@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChefHat, Minus, Plus, Send, ShoppingBag, Trash2, Utensils } from 'lucide-react';
+import { CheckCircle2, ChefHat, Minus, Plus, Send, ShoppingCart, Trash2, Utensils } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -17,6 +17,7 @@ export default function PublicTableOrder({ qrToken }) {
   const [sending, setSending] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [liveStatus, setLiveStatus] = useState(null);
+  const [cartVisible, setCartVisible] = useState(false);
 
   const loadMenu = async () => {
     setLoading(true);
@@ -49,6 +50,14 @@ export default function PublicTableOrder({ qrToken }) {
   const products = useMemo(() => (menu?.categories || []).filter(category => categoryId === 'all' || category.id === categoryId).flatMap(category => category.products || []), [menu, categoryId]);
   const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * Number(item.fraction?.price ?? item.product.base_price), 0), [cart]);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    const cartElement = document.getElementById('qr-cart');
+    if (!cartElement || !('IntersectionObserver' in window)) return undefined;
+    const observer = new IntersectionObserver(([entry]) => setCartVisible(entry.isIntersecting), { rootMargin: '-40% 0px -40% 0px', threshold: 0 });
+    observer.observe(cartElement);
+    return () => observer.disconnect();
+  }, [menu, cartCount]);
 
   const addProduct = (product, fraction = null) => {
     const key = `${product.id}:${fraction?.id || 'base'}`;
@@ -91,9 +100,9 @@ export default function PublicTableOrder({ qrToken }) {
       {error && <div className="qr-inline-error" role="alert">{error}</div>}
       {receipt && <section className="qr-receipt" aria-live="polite"><div><CheckCircle2 size={21}/><div><b>Pedido #{receipt.order_number} enviado</b><span>{orderStatusLabel[liveStatus?.status] || 'Aguardando confirmação da cozinha'} · Mesa {menu.table_number}</span></div></div><strong>{money(liveStatus?.total ?? receipt.total)}</strong>{liveStatus?.items?.length > 0 && <ul>{liveStatus.items.map((item,index)=><li key={`${item.name}-${index}`}>{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}<small>{orderStatusLabel[item.status] || item.status}</small></li>)}</ul>}<button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button></section>}
       {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product.image_path) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
-        <aside className="qr-cart">
+        <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">
-            <div><span className="qr-cart-title"><ShoppingBag size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
+            <div><span className="qr-cart-title"><ShoppingCart size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
             <span className="qr-cart-count">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
           </header>
           <div className="qr-cart-items">
@@ -101,7 +110,7 @@ export default function PublicTableOrder({ qrToken }) {
               const unitPrice = Number(item.fraction?.price ?? item.product.base_price);
               const imageUrl = productImageUrl(item.product.image_path);
               return <article className="qr-cart-item" key={item.key}>
-                {imageUrl ? <img className="qr-cart-photo" src={imageUrl} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> : <span className="qr-cart-item-photo-placeholder"><ShoppingBag size={18}/></span>}
+                {imageUrl ? <img className="qr-cart-photo" src={imageUrl} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> : <span className="qr-cart-item-photo-placeholder"><ShoppingCart size={18}/></span>}
                 <div className="qr-cart-item-content">
                   <div className="qr-cart-item-heading"><b>{item.product.name}</b><button type="button" className="qr-cart-remove" onClick={() => removeItem(item.key)} aria-label="Remover item" title="Remover item"><Trash2 size={16}/></button></div>
                   {item.fraction && <span className="qr-cart-item-variant">Tamanho &middot; {item.fraction.name}</span>}
@@ -112,7 +121,7 @@ export default function PublicTableOrder({ qrToken }) {
                   </div>
                 </div>
               </article>;
-            }) : <div className="qr-cart-empty"><span><ShoppingBag size={23}/></span><b>Seu pedido est&aacute; vazio</b><p>Adicione pizzas, bebidas ou outros itens para continuar.</p><button type="button" onClick={() => document.getElementById('qr-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Ver card&aacute;pio</button></div>}
+            }) : <div className="qr-cart-empty"><span><ShoppingCart size={23}/></span><b>Seu pedido est&aacute; vazio</b><p>Adicione pizzas, bebidas ou outros itens para continuar.</p><button type="button" onClick={() => document.getElementById('qr-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Ver card&aacute;pio</button></div>}
           </div>
           <form onSubmit={submitOrder}>
             <div className="qr-cart-details-title"><b>Detalhes para a equipe</b><span>Opcional</span></div>
@@ -123,6 +132,7 @@ export default function PublicTableOrder({ qrToken }) {
             <small>O pagamento ser&aacute; feito com a equipe do restaurante.</small>
           </form>
         </aside></div>}
+      {!cartVisible && menu.table_status !== 'reservada' && <button type="button" className="qr-mobile-cart-button" onClick={() => document.getElementById('qr-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label="Abrir meu pedido"><ShoppingCart size={20}/><span>Meu pedido</span><b>{cartCount}</b><strong>{money(cartTotal)}</strong></button>}
     </>}
     <footer className="qr-order-footer">COZINFOOD · Atendimento digital à mesa</footer>
   </main>;
