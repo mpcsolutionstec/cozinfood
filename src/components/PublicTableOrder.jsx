@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChefHat, Minus, Plus, Send, ShoppingCart, Trash2, Utensils } from 'lucide-react';
+import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, Minus, PackageCheck, Plus, Send, ShoppingCart, Trash2, Utensils, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const productImageUrl = imagePath => imagePath ? supabase.storage.from('product-images').getPublicUrl(imagePath).data.publicUrl : '';
 const orderStatusLabel = { pendente: 'Recebido pelo restaurante', em_preparo: 'Em preparo', pronto: 'Pronto para servir', entregue: 'Finalizado', cancelado: 'Cancelado' };
+const orderStatusMeta = {
+  pendente: { label: orderStatusLabel.pendente, tone: 'pending', icon: Clock3 },
+  em_preparo: { label: orderStatusLabel.em_preparo, tone: 'preparing', icon: CookingPot },
+  pronto: { label: orderStatusLabel.pronto, tone: 'ready', icon: PackageCheck },
+  entregue: { label: orderStatusLabel.entregue, tone: 'done', icon: CircleCheck },
+  cancelado: { label: orderStatusLabel.cancelado, tone: 'cancelled', icon: XCircle },
+};
 
 export default function PublicTableOrder({ qrToken }) {
   const [menu, setMenu] = useState(null);
@@ -98,7 +105,21 @@ export default function PublicTableOrder({ qrToken }) {
     {error && !menu ? <section className="qr-error"><h1>Não conseguimos abrir este cardápio</h1><p>{error}</p><button className="primary" onClick={loadMenu}>Tentar novamente</button></section> : menu && <>
       <section className="qr-welcome"><span>SEJA BEM-VINDO</span><h1>Faça seu pedido à mesa</h1><p>Escolha os itens. A equipe recebe seu pedido na hora.</p></section>
       {error && <div className="qr-inline-error" role="alert">{error}</div>}
-      {receipt && <section className="qr-receipt" aria-live="polite"><div><CheckCircle2 size={21}/><div><b>Pedido #{receipt.order_number} enviado</b><span>{orderStatusLabel[liveStatus?.status] || 'Aguardando confirmação da cozinha'} · Mesa {menu.table_number}</span></div></div><strong>{money(liveStatus?.total ?? receipt.total)}</strong>{liveStatus?.items?.length > 0 && <ul>{liveStatus.items.map((item,index)=><li key={`${item.name}-${index}`}>{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}<small>{orderStatusLabel[item.status] || item.status}</small></li>)}</ul>}<button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button></section>}
+      {receipt && (() => {
+        const current = orderStatusMeta[liveStatus?.status] || { label: 'Aguardando confirmação da cozinha', tone: 'pending', icon: Clock3 };
+        const CurrentIcon = current.icon;
+        return <section className={`qr-receipt status-${current.tone}`} aria-live="polite">
+          <div className="qr-receipt-heading"><span className="qr-receipt-success-icon"><CheckCircle2 size={22}/></span><div><b>Pedido #{receipt.order_number} enviado</b><span>Mesa {menu.table_number} · Acompanhe o preparo abaixo</span></div></div>
+          <div className={`qr-order-status ${current.tone}`}><CurrentIcon size={25}/><span><small>STATUS DO PEDIDO</small><b>{current.label}</b></span></div>
+          <strong className="qr-receipt-total">Total do pedido <span>{money(liveStatus?.total ?? receipt.total)}</span></strong>
+          {liveStatus?.items?.length > 0 && <ul>{liveStatus.items.map((item,index) => {
+            const itemMeta = orderStatusMeta[item.status] || { label: item.status || 'Aguardando', tone: 'pending', icon: Clock3 };
+            const ItemIcon = itemMeta.icon;
+            return <li key={`${item.name}-${index}`}><span className="qr-receipt-item-name">{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}</span><small className={`qr-item-status ${itemMeta.tone}`}><ItemIcon size={14}/>{itemMeta.label}</small></li>;
+          })}</ul>}
+          <button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button>
+        </section>;
+      })()}
       {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product.image_path) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
         <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check, ChefHat, CircleDollarSign, Edit3, ImagePlus, Plus, Pizza, Search, Trash2, Upload, Wheat, X } from 'lucide-react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
+import ConfirmDialog from './ConfirmDialog';
 
 const sizeDefinitions = [
   { name: 'Broto', serves: 1 },
@@ -39,6 +40,8 @@ export default function PizzaMenuManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [section, setSection] = useState('catalog');
   const [categoryFilter, setCategoryFilter] = useState('pizzas');
   const [search, setSearch] = useState('');
@@ -253,12 +256,21 @@ export default function PizzaMenuManager() {
     await loadCatalog();
   };
 
-  const deleteProduct = async product => {
-    if (!window.confirm(`Excluir “${product.name}”? Os itens já lançados em pedidos manterão o nome e o preço registrados.`)) return;
+  const deleteProduct = product => setConfirmAction({ type: 'product', item: product });
+
+  const confirmDelete = async () => {
+    if (!confirmAction) return;
+    setDeleting(true);
     setError('');
-    const { error: deleteError } = await supabase.from('products').delete().eq('id', product.id).eq('restaurant_id', restaurantId);
+    const table = confirmAction.type === 'product' ? 'products' : 'pizza_borders';
+    const { error: deleteError } = await supabase.from(table).delete().eq('id', confirmAction.item.id).eq('restaurant_id', restaurantId);
     if (deleteError) setError(`Não foi possível excluir: ${deleteError.message}`);
-    else { setNotice(`“${product.name}” foi excluído do catálogo.`); await loadCatalog(); }
+    else {
+      setNotice(confirmAction.type === 'product' ? `“${confirmAction.item.name}” foi excluído do catálogo.` : `Borda “${confirmAction.item.name}” excluída.`);
+      await loadCatalog();
+    }
+    setDeleting(false);
+    setConfirmAction(null);
   };
 
   const savePricingRule = async event => {
@@ -289,12 +301,7 @@ export default function PizzaMenuManager() {
     else { setBorderDialog(false); setNotice(editingBorder ? 'Borda atualizada.' : 'Borda cadastrada.'); await loadCatalog(); }
     setBusy(false);
   };
-  const deleteBorder = async border => {
-    if (!window.confirm(`Excluir a borda “${border.name}”?`)) return;
-    const { error: borderError } = await supabase.from('pizza_borders').delete().eq('id', border.id).eq('restaurant_id', restaurantId);
-    if (borderError) setError(`Não foi possível excluir a borda: ${borderError.message}`);
-    else { setNotice(`Borda “${border.name}” excluída.`); await loadCatalog(); }
-  };
+  const deleteBorder = border => setConfirmAction({ type: 'border', item: border });
 
   const setFlavorSlot = (index, value) => setFlavorIds(current => current.map((id, slot) => slot === index ? value : id));
   const productFormName = productForm.category_slug === 'esfihas' ? 'esfiha' : 'pizza';
@@ -311,6 +318,7 @@ export default function PizzaMenuManager() {
 
     {error && <div className="pizza-message error" role="alert">{error}<button onClick={() => setError('')}><X size={14}/></button></div>}
     {notice && <div className="pizza-message success" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
+    <ConfirmDialog open={Boolean(confirmAction)} title={confirmAction?.type === 'product' ? `Excluir “${confirmAction.item.name}”?` : `Excluir borda “${confirmAction?.item.name || ''}”?`} description={confirmAction?.type === 'product' ? 'Os itens já lançados em pedidos manterão o nome e o preço registrados.' : 'A borda será removida do cadastro e não poderá ser selecionada em novos pedidos.'} confirmLabel="Confirmar exclusão" busy={deleting} onConfirm={confirmDelete} onClose={() => { if (!deleting) setConfirmAction(null); }}/>
 
     {loading ? <div className="pizza-loading"><span className="auth-spinner"/>Carregando catálogo...</div> : section === 'catalog' ? <>
       <div className="pizza-catalog-toolbar"><div className="pizza-category-tabs">{categoryDefinitions.map(category => <button key={category.slug} className={categoryFilter === category.slug ? 'active' : ''} onClick={() => setCategoryFilter(category.slug)}>{category.slug === 'pizzas' ? <Pizza size={15}/> : <Wheat size={15}/>} {category.name}<b>{products.filter(product => product.categories?.slug === category.slug).length}</b></button>)}</div><label className="pizza-search"><Search size={15}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar sabor"/></label></div>

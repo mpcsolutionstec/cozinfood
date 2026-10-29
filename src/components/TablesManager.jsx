@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
 import TableService from './TableService';
+import ConfirmDialog from './ConfirmDialog';
 
 const tableTypes = [
   { key: 'round_2', name: 'Redonda', seats: '2 lugares', image: 'mesa-redonda-2.svg' },
@@ -33,6 +34,8 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
   const [serviceTable, setServiceTable] = useState(null);
   const [qrTable, setQrTable] = useState(null);
   const [copiedQr, setCopiedQr] = useState(false);
+  const [confirmTable, setConfirmTable] = useState(null);
+  const [deletingTable, setDeletingTable] = useState(false);
 
   const counts = useMemo(() => ({
     livre: tables.filter(table => table.status === 'livre').length,
@@ -93,13 +96,18 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     setNotice(editingId ? `Mesa ${number} atualizada.` : `Mesa ${number} cadastrada.`);
   };
 
-  const deleteTable = async table => {
+  const deleteTable = table => {
     if (table.status === 'ocupada' || table.status === 'aguardando_conta') {
       setNotice('Finalize a comanda antes de excluir esta mesa.');
       return;
     }
-    const confirmed = window.confirm(`Excluir a mesa ${table.number}? Pedidos antigos deixarão de apontar para ela.`);
-    if (!confirmed) return;
+    setConfirmTable(table);
+  };
+
+  const confirmDeleteTable = async () => {
+    if (!confirmTable) return;
+    const table = confirmTable;
+    setDeletingTable(true);
     setNotice('');
     const { error: deleteError } = await supabase
       .from('tables')
@@ -108,9 +116,13 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
       .eq('restaurant_id', profile.restaurant_id);
     if (deleteError) {
       setNotice(`Não foi possível excluir a mesa: ${deleteError.message}`);
+      setDeletingTable(false);
+      setConfirmTable(null);
       return;
     }
     await refresh();
+    setDeletingTable(false);
+    setConfirmTable(null);
     setNotice(`Mesa ${table.number} excluída.`);
   };
 
@@ -165,6 +177,7 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     </div>}
 
     {serviceTable && <TableService table={serviceTable} profile={profile} onClose={() => setServiceTable(null)} onChanged={refresh}/>}
+    <ConfirmDialog open={Boolean(confirmTable)} title={`Excluir mesa ${confirmTable?.number || ''}?`} description="Pedidos antigos deixarão de apontar para esta mesa. Esta ação não pode ser desfeita." confirmLabel="Excluir mesa" busy={deletingTable} onConfirm={confirmDeleteTable} onClose={() => { if (!deletingTable) setConfirmTable(null); }}/>
     {qrTable && <div className="table-modal-backdrop qr-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setQrTable(null); }}><section className="table-modal table-qr-modal" role="dialog" aria-modal="true" aria-labelledby="table-qr-title"><header><div><span className="table-modal-icon"><QrCode size={18}/></span><div><h2 id="table-qr-title">QR Code · Mesa {qrTable.number}</h2><p>Cliente abre o cardápio e envia o pedido direto para a mesa.</p></div></div><button className="table-modal-close" onClick={() => setQrTable(null)} aria-label="Fechar"><X size={19}/></button></header><div className="table-qr-content"><div className="table-qr-code"><QRCodeSVG value={qrMenuUrl(qrTable)} size={210} level="H" includeMargin/></div><label>Endereço do cardápio<input readOnly value={qrMenuUrl(qrTable)} onFocus={event => event.target.select()}/></label><div className="table-qr-actions"><button className="table-cancel-button" onClick={() => window.print()}>Imprimir QR Code</button><button className="primary" onClick={() => copyQrLink(qrTable)}>{copiedQr ? <><Check size={14}/> Link copiado</> : 'Copiar link'}</button></div></div></section></div>}
     {dialog && <div className="table-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setDialog(false); }}>
       <section className="table-modal" role="dialog" aria-modal="true" aria-labelledby="table-modal-title">

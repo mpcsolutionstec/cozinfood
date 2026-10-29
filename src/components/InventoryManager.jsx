@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BellRing, ClipboardList, Edit3, MinusCircle, Plus, RefreshCw, Save, Trash2, TrendingDown, Warehouse } from 'lucide-react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
+import ConfirmDialog from './ConfirmDialog';
 
 const units = ['kg', 'g', 'l', 'ml', 'un'];
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -41,6 +42,8 @@ export default function InventoryManager() {
   const [additionForm, setAdditionForm] = useState({ name: '', price: '' });
   const [editingAddition, setEditingAddition] = useState(null);
   const [loss, setLoss] = useState({ ingredient_id: '', quantity: '', unit: '', reason: '' });
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     if (!restaurantId) { setError('Não encontramos o restaurante desta conta.'); setLoading(false); return; }
@@ -123,11 +126,7 @@ export default function InventoryManager() {
     setBusy(false);
   };
   const editIngredient = item => { setEditingIngredient(item); setIngredientForm({ name: item.name, unit: item.unit, quantity: String(item.quantity), minimum_quantity: String(item.minimum_quantity), cost_per_unit: String(item.cost_per_unit) }); };
-  const deleteIngredient = async item => {
-    if (!window.confirm(`Excluir o insumo “${item.name}”? Insumos já usados em fichas técnicas não podem ser excluídos.`)) return;
-    const { error: deleteError } = await supabase.from('ingredients_stock').delete().eq('id', item.id).eq('restaurant_id', restaurantId);
-    if (deleteError) setError(`Não foi possível excluir: ${deleteError.message}`); else { setNotice('Insumo excluído.'); await load(); }
-  };
+  const deleteIngredient = item => setConfirmAction({ type: 'ingredient', item });
 
   const saveRecipes = async event => {
     event.preventDefault(); setBusy(true); setError('');
@@ -156,10 +155,19 @@ export default function InventoryManager() {
     if (saveError) setError(`Não foi possível salvar o adicional: ${saveError.message}`); else { setAdditionForm({ name: '', price: '' }); setNotice(editingAddition ? 'Adicional atualizado.' : 'Adicional cadastrado. Agora você pode criar a ficha técnica dele.'); setEditingAddition(null); await load(); }
   };
   const editAddition = item => { setEditingAddition(item); setAdditionForm({ name: item.name, price: String(item.price) }); };
-  const deleteAddition = async item => {
-    if (!window.confirm(`Excluir o adicional “${item.name}”?`)) return;
-    const { error: deleteError } = await supabase.from('product_additions').delete().eq('id', item.id).eq('restaurant_id', restaurantId);
-    if (deleteError) setError(`Não foi possível excluir: ${deleteError.message}`); else await load();
+  const deleteAddition = item => setConfirmAction({ type: 'addition', item });
+  const confirmDelete = async () => {
+    if (!confirmAction) return;
+    setDeleting(true);
+    const table = confirmAction.type === 'ingredient' ? 'ingredients_stock' : 'product_additions';
+    const { error: deleteError } = await supabase.from(table).delete().eq('id', confirmAction.item.id).eq('restaurant_id', restaurantId);
+    if (deleteError) setError(`Não foi possível excluir: ${deleteError.message}`);
+    else {
+      setNotice(confirmAction.type === 'ingredient' ? 'Insumo excluído.' : 'Adicional excluído.');
+      await load();
+    }
+    setDeleting(false);
+    setConfirmAction(null);
   };
   const registerLoss = async event => {
     event.preventDefault(); const ingredient = ingredients.find(item => item.id === loss.ingredient_id);
@@ -180,6 +188,7 @@ export default function InventoryManager() {
     <div className="page-heading inventory-heading"><div><h1>Estoque e fichas técnicas</h1><p>Insumos, custos de produção, perdas e alertas de reposição em tempo real.</p></div><span className="inventory-live"><i/> {loading ? 'Sincronizando' : 'Estoque ao vivo'}</span></div>
     {error && <div className="inventory-message error" role="alert">{error}<button onClick={() => setError('')}>×</button></div>}
     {notice && <div className="inventory-message success" role="status">{notice}<button onClick={() => setNotice('')}>×</button></div>}
+    <ConfirmDialog open={Boolean(confirmAction)} title={confirmAction?.type === 'ingredient' ? `Excluir insumo “${confirmAction.item.name}”?` : `Excluir adicional “${confirmAction?.item.name || ''}”?`} description={confirmAction?.type === 'ingredient' ? 'Insumos usados em fichas técnicas não podem ser excluídos. O sistema vai verificar os vínculos antes de remover.' : 'Este adicional será removido do cadastro do restaurante.'} confirmLabel="Confirmar exclusão" busy={deleting} onConfirm={confirmDelete} onClose={() => { if (!deleting) setConfirmAction(null); }}/>
     {lowStock.length > 0 && <section className="inventory-alert"><AlertTriangle size={18}/><div><b>{lowStock.length} alerta(s) de reposição</b><span>{lowStock.map(item => `${item.name}: ${quantity(item.quantity)} ${item.unit} (mín. ${quantity(item.minimum_quantity)} ${item.unit})`).join(' · ')}</span></div><BellRing size={16}/></section>}
     <nav className="inventory-tabs"><button className={section === 'stock' ? 'active' : ''} onClick={() => setSection('stock')}><Warehouse size={15}/> Insumos</button><button className={section === 'recipes' ? 'active' : ''} onClick={() => setSection('recipes')}><ClipboardList size={15}/> Fichas e custos</button><button className={section === 'losses' ? 'active' : ''} onClick={() => setSection('losses')}><TrendingDown size={15}/> Perdas e descarte</button><button className="inventory-refresh" onClick={load} aria-label="Atualizar"><RefreshCw size={14}/></button></nav>
     {loading ? <div className="inventory-loading">Carregando dados do estoque...</div> : section === 'stock' ? <div className="inventory-layout">

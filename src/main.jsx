@@ -15,6 +15,7 @@ import './pizza-photos.css';
 import './inventory.css';
 import './salon-service.css';
 import './qr-cart.css';
+import './confirm-dialog.css';
 import './theme.css';
 const tableQrToken = new URLSearchParams(window.location.search).get('mesa');
 const digitalMenuSlug = new URLSearchParams(window.location.search).get('cardapio');
