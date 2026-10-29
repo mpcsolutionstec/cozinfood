@@ -311,7 +311,8 @@ comment on column public.order_items.additions is 'Stock deduction format: [{"id
 drop trigger if exists order_item_stock_deduction on public.order_items;
 create trigger order_item_stock_deduction
   after insert or update of status, quantity, flavors, additions, border_id, product_id on public.order_items
-  for each row execute function public.apply_order_item_stock();
+  for each row when (new.status in ('pronto','entregue','cancelado'))
+  execute function public.apply_order_item_stock();
 
 revoke execute on function public.apply_order_item_stock() from public, anon, authenticated;
 revoke execute on function public.inventory_convert_unit(numeric, text, text) from public, anon, authenticated;

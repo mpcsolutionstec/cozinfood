@@ -53,6 +53,7 @@ export default function KitchenDisplay() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [busyIds, setBusyIds] = useState([]);
   const [actionError, setActionError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
   const audioContext = useRef(null);
   const alertedItems = useRef(new Set());
 
@@ -175,8 +176,10 @@ export default function KitchenDisplay() {
   const advance = async group => {
     setBusyIds(group.ids);
     setActionError('');
+    setActionNotice('');
     try {
       await changeStatus(group.ids, nextStatus[group.status]);
+      if (group.status === 'em_preparo') setActionNotice('Pedido marcado como pronto. O estoque das fichas técnicas foi atualizado.');
     } catch (updateError) {
       setActionError(`Não foi possível atualizar o pedido: ${updateError.message}`);
     } finally {
@@ -212,6 +215,7 @@ export default function KitchenDisplay() {
     {!live && <div className="kds-connection-warning"><BellRing size={15}/> Tentando reconectar ao Supabase Realtime. Os pedidos continuam sendo atualizados manualmente.</div>}
     {error && <div className="kds-error" role="alert">Falha ao carregar os pedidos: {error}<button onClick={refresh}>Tentar novamente</button></div>}
     {actionError && <div className="kds-error" role="alert">{actionError}<button onClick={() => setActionError('')}>Fechar</button></div>}
+    {actionNotice && <div className="kds-stock-notice" role="status"><CircleCheck size={15}/>{actionNotice}<button onClick={() => setActionNotice('')}>Fechar</button></div>}
     <div className="kds-board-meta"><span><i className="kds-dot pending-dot"/> Na fila <b>{groups.filter(item => item.status === 'pendente').length}</b></span><span><i className="kds-dot preparing-dot"/> Em preparo <b>{groups.filter(item => item.status === 'em_preparo').length}</b></span><span><i className="kds-dot ready-dot"/> Prontos <b>{groups.filter(item => item.status === 'pronto').length}</b></span><span className="kds-current-time"><Clock3 size={13}/>{new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
 
     {loading && groups.length === 0 ? <div className="kds-empty"><span className="auth-spinner"/>Carregando pedidos da cozinha...</div> : error && groups.length === 0 ? null : groups.length === 0 ? <div className="kds-empty-state"><span><ChefHat size={28}/></span><h2>Fila vazia</h2><p>Os novos pedidos deste setor aparecerão aqui assim que forem enviados.</p></div> : <div className="kds-ticket-grid">
