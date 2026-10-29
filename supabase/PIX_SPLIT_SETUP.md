@@ -2,7 +2,10 @@
 
 ## 1. Atualizar o banco
 
-No Supabase, abra **SQL Editor**, cole e execute o conteúdo de `migrations/20261030100000_table_bill_splitting_pix.sql`.
+No Supabase, abra **SQL Editor** e execute as migrações em ordem, caso ainda não tenham sido aplicadas:
+
+1. `migrations/20261030100000_table_bill_splitting_pix.sql`
+2. `migrations/20261030120000_split_selected_items_and_remaining_balance.sql`
 
 ## 2. Cadastrar as chaves protegidas
 
@@ -36,4 +39,4 @@ https://SEU_PROJECT_REF.supabase.co/functions/v1/mercadopago-webhook
 
 A criação de cada Pix também envia essa URL como `notification_url`. A função consulta o pagamento na API do Mercado Pago e valida a assinatura antes de atualizar a divisão.
 
-O botão **Dividir conta / Pix** aparece na comanda aberta da mesa. Cada participante precisa informar e-mail, exigido pela API do Mercado Pago. A opção por itens gera uma cobrança para cada item escolhido; a divisão por pessoas divide o valor total e ajusta os centavos restantes na última parte.
+O botão **Dividir conta / Pix** aparece na comanda aberta da mesa. Cada participante precisa informar e-mail, exigido pela API do Mercado Pago. Em **Selecionar itens**, todos os itens marcados são somados em uma cobrança Pix para um pagador; o saldo restante é dividido entre as pessoas informadas e cada parte recebe seu próprio QR Pix.

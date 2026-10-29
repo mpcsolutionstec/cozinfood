@@ -35,6 +35,9 @@ export default function TableService({ table, profile, onClose, onChanged }) {
   const [splitCount, setSplitCount] = useState(2);
   const [splitPeople, setSplitPeople] = useState([{ customer_label: 'Pessoa 1', customer_email: '' }, { customer_label: 'Pessoa 2', customer_email: '' }]);
   const [selectedSplitItems, setSelectedSplitItems] = useState({});
+  const [splitItemPayer, setSplitItemPayer] = useState({ customer_label: 'Itens selecionados', customer_email: '' });
+  const [splitRemainderCount, setSplitRemainderCount] = useState(2);
+  const [splitRemainderPeople, setSplitRemainderPeople] = useState([{ customer_label: 'Pessoa 1', customer_email: '' }, { customer_label: 'Pessoa 2', customer_email: '' }]);
   const [splitPayments, setSplitPayments] = useState([]);
   const [splitLoading, setSplitLoading] = useState(false);
   const [splitError, setSplitError] = useState('');
@@ -103,6 +106,13 @@ export default function TableService({ table, profile, onClose, onChanged }) {
 
   const visibleProducts = useMemo(() => products.filter(product => categoryId === 'all' || product.category_id === categoryId), [products, categoryId]);
   const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * Number(item.fraction?.price ?? item.product.base_price), 0), [cart]);
+  const selectedSplitTotal = useMemo(() => (activeOrder?.order_items || []).reduce((sum, item) => {
+    const selected = selectedSplitItems[item.id];
+    if (!selected) return sum;
+    const quantity = Number(selected.quantity ?? item.quantity);
+    return sum + Math.round(Number(item.line_total) * quantity / Number(item.quantity) * 100) / 100;
+  }, 0), [activeOrder, selectedSplitItems]);
+  const splitRemainder = Math.max(0, Math.round((Number(activeOrder?.total || 0) - selectedSplitTotal) * 100) / 100);
 
   const addProduct = (product, fraction = null) => {
     const key = `${product.id}:${fraction?.id || 'base'}`;
@@ -189,7 +199,13 @@ export default function TableService({ table, profile, onClose, onChanged }) {
     setSplitCount(next);
     setSplitPeople(people => Array.from({ length: next }, (_, index) => people[index] || { customer_label: `Pessoa ${index + 1}`, customer_email: '' }));
   };
+  const changeRemainderCount = count => {
+    const next = Math.min(20, Math.max(1, Number(count) || 1));
+    setSplitRemainderCount(next);
+    setSplitRemainderPeople(people => Array.from({ length: next }, (_, index) => people[index] || { customer_label: `Pessoa ${index + 1}`, customer_email: '' }));
+  };
   const setPersonField = (index, field, value) => setSplitPeople(people => people.map((person, i) => i === index ? { ...person, [field]: value } : person));
+  const setRemainderPersonField = (index, field, value) => setSplitRemainderPeople(people => people.map((person, i) => i === index ? { ...person, [field]: value } : person));
   const generatePixForSplits = async (splits, suppliedEmails = null) => {
     const results = await Promise.all(splits.map(async (split, index) => {
       const payer_email = suppliedEmails?.[index] || split.customer_email;
@@ -209,7 +225,14 @@ export default function TableService({ table, profile, onClose, onChanged }) {
     setSplitPayments([]);
     const definitions = splitMode === 'equal'
       ? splitPeople.map(person => ({ customer_label: person.customer_label.trim(), customer_email: person.customer_email.trim() }))
-      : activeOrder.order_items.filter(item => selectedSplitItems[item.id]).map(item => ({ customer_label: selectedSplitItems[item.id].customer_label.trim() || item.name, customer_email: selectedSplitItems[item.id].customer_email.trim(), items: [{ item_id: item.id, quantity: Number(item.quantity) }] }));
+      : [
+        {
+          customer_label: splitItemPayer.customer_label.trim() || 'Itens selecionados',
+          customer_email: splitItemPayer.customer_email.trim(),
+          items: activeOrder.order_items.filter(item => selectedSplitItems[item.id]).map(item => ({ item_id: item.id, quantity: Number(selectedSplitItems[item.id].quantity ?? item.quantity) })),
+        },
+        ...(splitRemainder > 0 ? splitRemainderPeople.slice(0, splitRemainderCount).map(person => ({ customer_label: person.customer_label.trim(), customer_email: person.customer_email.trim() })) : []),
+      ];
     if (definitions.some(person => !person.customer_email || !person.customer_email.includes('@'))) {
       setSplitError('Informe um e-mail válido para cada pagador. O Mercado Pago exige o e-mail do comprador para criar o Pix.');
       setSplitLoading(false);
@@ -218,7 +241,7 @@ export default function TableService({ table, profile, onClose, onChanged }) {
     const { data, error: rpcError } = await supabase.rpc('create_order_splits', {
       p_order_id: activeOrder.id,
       p_mode: splitMode,
-      p_people: splitMode === 'equal' ? splitCount : 0,
+      p_people: splitMode === 'equal' ? splitCount : (splitRemainder > 0 ? splitRemainderCount : 0),
       p_definitions: definitions,
     });
     if (rpcError) {
@@ -263,8 +286,13 @@ export default function TableService({ table, profile, onClose, onChanged }) {
       <header><div className="split-title-icon"><CreditCard size={20}/></div><div><h2 id="split-title">Dividir conta · Mesa {table.number}</h2><p>Comanda #{activeOrder?.order_number} · Total {money(activeOrder?.total)}</p></div><button type="button" onClick={() => setSplitOpen(false)} aria-label="Fechar"><X size={19}/></button></header>
       {!splitPayments.length ? <form onSubmit={createSplitPix} className="split-form">
         <div className="split-mode-tabs"><button type="button" className={splitMode === 'equal' ? 'active' : ''} onClick={() => setSplitMode('equal')}>Dividir por pessoas</button><button type="button" className={splitMode === 'items' ? 'active' : ''} onClick={() => setSplitMode('items')}>Selecionar itens</button></div>
-        {splitMode === 'equal' ? <><label className="split-count-field">Quantidade de pessoas<input type="number" min="2" max="20" value={splitCount} onChange={event => changeSplitCount(event.target.value)}/></label><div className="split-people-list">{splitPeople.map((person, index) => <div className="split-person" key={index}><b>Pessoa {index + 1} · {money(splitAmount(activeOrder?.total, splitCount, index))}</b><div><input aria-label={`Nome da pessoa ${index + 1}`} placeholder={`Nome da pessoa ${index + 1}`} value={person.customer_label} onChange={event => setPersonField(index, 'customer_label', event.target.value)}/><input type="email" required aria-label={`E-mail da pessoa ${index + 1}`} placeholder="E-mail para o Pix" value={person.customer_email} onChange={event => setPersonField(index, 'customer_email', event.target.value)}/></div></div>)}</div></> : <div className="split-item-list">{(activeOrder?.order_items || []).filter(item => item.status !== 'cancelado').map(item => <label className="split-item-row" key={item.id}><input type="checkbox" checked={Boolean(selectedSplitItems[item.id])} onChange={event => setSelectedSplitItems(current => ({ ...current, [item.id]: event.target.checked ? { customer_label: item.name, customer_email: '' } : undefined }))}/><span><b>{item.quantity}× {item.name}</b><small>{money(item.line_total)} · {item.fraction_label || 'item'}</small></span>{selectedSplitItems[item.id] && <span className="split-item-fields"><input placeholder="Quem paga este item?" value={selectedSplitItems[item.id].customer_label} onChange={event => setSelectedSplitItems(current => ({ ...current, [item.id]: { ...current[item.id], customer_label: event.target.value } }))}/><input type="email" required placeholder="E-mail para o Pix" value={selectedSplitItems[item.id].customer_email} onChange={event => setSelectedSplitItems(current => ({ ...current, [item.id]: { ...current[item.id], customer_email: event.target.value } }))}/></span>}</label>)}<p className="split-help">Cada item selecionado vira uma cobrança Pix pelo valor correspondente. Itens não selecionados continuam na comanda.</p></div>}
-        {splitError && <div className="split-error" role="alert">{splitError}</div>}<button className="split-create" disabled={splitLoading || (splitMode === 'items' && !Object.values(selectedSplitItems).some(Boolean))}><QrCode size={17}/>{splitLoading ? 'Gerando Pix individuais…' : 'Gerar QR Codes Pix'}</button><small className="split-secure-note">A chave do Mercado Pago fica protegida no Supabase. Cada pessoa recebe um Pix no valor da sua parte.</small>
+        {splitMode === 'equal' ? <><label className="split-count-field">Quantidade de pessoas<input type="number" min="2" max="20" value={splitCount} onChange={event => changeSplitCount(event.target.value)}/></label><div className="split-people-list">{splitPeople.map((person, index) => <div className="split-person" key={index}><b>Pessoa {index + 1} · {money(splitAmount(activeOrder?.total, splitCount, index))}</b><div><input aria-label={`Nome da pessoa ${index + 1}`} placeholder={`Nome da pessoa ${index + 1}`} value={person.customer_label} onChange={event => setPersonField(index, 'customer_label', event.target.value)}/><input type="email" required aria-label={`E-mail da pessoa ${index + 1}`} placeholder="E-mail para o Pix" value={person.customer_email} onChange={event => setPersonField(index, 'customer_email', event.target.value)}/></div></div>)}</div></> : <div className="split-item-mode">
+          <div className="split-item-list">{(activeOrder?.order_items || []).filter(item => item.status !== 'cancelado').map(item => <label className="split-item-row" key={item.id}><input type="checkbox" checked={Boolean(selectedSplitItems[item.id])} onChange={event => setSelectedSplitItems(current => ({ ...current, [item.id]: event.target.checked ? { quantity: Number(item.quantity) } : undefined }))}/><span><b>{item.quantity}× {item.name}</b><small>{money(item.line_total)} · {item.fraction_label || 'item'}</small></span>{selectedSplitItems[item.id] && <input className="split-item-quantity" type="number" min="0.01" max={item.quantity} step="0.01" aria-label={`Quantidade de ${item.name} incluída na divisão`} value={selectedSplitItems[item.id].quantity} onChange={event => setSelectedSplitItems(current => ({ ...current, [item.id]: { quantity: Math.min(Number(item.quantity), Math.max(0.01, Number(event.target.value) || 0.01)) } }))}/>}</label>)}<p className="split-help">Marque os itens que uma pessoa pagará. O restante da conta será dividido entre as outras pessoas.</p></div>
+          <div className="split-selection-summary"><div><span>Total dos itens selecionados</span><strong>{money(selectedSplitTotal)}</strong></div><div><span>Saldo restante para dividir</span><strong>{money(splitRemainder)}</strong></div></div>
+          {selectedSplitTotal > 0 && <><div className="split-person split-item-payer"><b>Um Pix para os itens selecionados · {money(selectedSplitTotal)}</b><div><input aria-label="Nome de quem pagará os itens selecionados" placeholder="Nome de quem pagará os itens" value={splitItemPayer.customer_label} onChange={event => setSplitItemPayer(current => ({ ...current, customer_label: event.target.value }))}/><input type="email" required aria-label="E-mail de quem pagará os itens selecionados" placeholder="E-mail para este Pix" value={splitItemPayer.customer_email} onChange={event => setSplitItemPayer(current => ({ ...current, customer_email: event.target.value }))}/></div></div>
+            {splitRemainder > 0 ? <><label className="split-count-field">Pessoas que dividirão o saldo<input type="number" min="1" max="20" value={splitRemainderCount} onChange={event => changeRemainderCount(event.target.value)}/></label><div className="split-people-list">{splitRemainderPeople.slice(0, splitRemainderCount).map((person, index) => <div className="split-person" key={index}><b>Pessoa {index + 1} · {money(splitAmount(splitRemainder, splitRemainderCount, index))}</b><div><input aria-label={`Nome da pessoa ${index + 1} que dividirá o saldo`} placeholder={`Nome da pessoa ${index + 1}`} value={person.customer_label} onChange={event => setRemainderPersonField(index, 'customer_label', event.target.value)}/><input type="email" required aria-label={`E-mail da pessoa ${index + 1} que dividirá o saldo`} placeholder="E-mail para o Pix" value={person.customer_email} onChange={event => setRemainderPersonField(index, 'customer_email', event.target.value)}/></div></div>)}</div></> : <p className="split-help">Os itens selecionados cobrem toda a conta; será gerado apenas um QR Pix.</p>}</>}
+        </div>}
+        {splitError && <div className="split-error" role="alert">{splitError}</div>}<button className="split-create" disabled={splitLoading || (splitMode === 'items' && selectedSplitTotal <= 0)}><QrCode size={17}/>{splitLoading ? 'Gerando Pix individuais…' : 'Gerar QR Codes Pix'}</button><small className="split-secure-note">A chave do Mercado Pago fica protegida no Supabase. Cada pessoa recebe um Pix no valor da sua parte.</small>
       </form> : <div className="split-results">{splitError && <div className="split-error" role="alert">{splitError}</div>}{splitPayments.map((split, index) => <article className="split-result" key={split.id || index}><div className="split-result-copy"><b>{split.customer_label || `Pessoa ${index + 1}`}</b><strong>{money(split.amount)}</strong><span>{split.status === 'pago' ? 'Pix pago' : split.status === 'aguardando' ? 'Aguardando pagamento' : 'Pix pronto para pagar'}</span></div>{split.qr_code_base64 ? <img className="split-qr-image" src={`data:image/png;base64,${split.qr_code_base64}`} alt={`QR Code Pix de ${split.customer_label || `Pessoa ${index + 1}`}`}/> : split.qr_code ? <QRCodeSVG value={split.qr_code} size={150} level="M" includeMargin/> : <div className="split-qr-placeholder"><QrCode size={28}/><span>{split.error || 'QR indisponível'}</span></div>}{split.qr_code && <><button type="button" className="split-copy" onClick={() => copyPix(split.qr_code)}><Copy size={14}/>Copiar código Pix</button><textarea readOnly value={split.qr_code} aria-label="Código Pix copia e cola"/></>}{split.error && <button className="split-retry" type="button" onClick={() => retryPix(split)} disabled={splitLoading}>Tentar novamente</button>}</article>)}<button className="split-done" type="button" onClick={() => setSplitOpen(false)}>Concluir</button></div>}
     </section></div>}
   </div>;
