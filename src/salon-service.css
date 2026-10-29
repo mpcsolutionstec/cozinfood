@@ -459,6 +459,52 @@
   color: #ba5732;
 }
 
+.service-bottom-actions .service-split-action { display: inline-flex; align-items: center; gap: 5px; border-color: #cbdcf5; background: #f2f7ff; color: #365f9a; }
+.split-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: #101827a8; }
+.split-dialog { width: min(760px,100%); max-height: min(90dvh,900px); overflow-y: auto; border: 1px solid #e4e9f0; border-radius: 16px; background: #fff; color: #26354a; box-shadow: 0 28px 90px #10182750; }
+.split-dialog > header { display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #edf0f4; }
+.split-title-icon { display:grid; width:42px; height:42px; flex:0 0 auto; place-items:center; border-radius:12px; background:#edf5ff; color:#3865a3; }
+.split-dialog > header h2 { margin:0; font:800 17px Manrope,sans-serif; }
+.split-dialog > header p { margin:4px 0 0; color:#758297; font-size:12px; }
+.split-dialog > header > button { display:grid; width:34px; height:34px; margin-left:auto; place-items:center; border:0; border-radius:8px; background:transparent; color:#637085; cursor:pointer; }
+.split-form { display:grid; gap:15px; padding:18px 20px 20px; }
+.split-mode-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:4px; border-radius:10px; background:#f1f4f8; }
+.split-mode-tabs button { min-height:40px; border:0; border-radius:8px; background:transparent; color:#6c788b; font:700 12px 'DM Sans',sans-serif; cursor:pointer; }
+.split-mode-tabs button.active { background:#fff; color:#bd552f; box-shadow:0 2px 8px #25344a12; }
+.split-count-field { display:grid; max-width:260px; gap:6px; color:#526176; font-size:12px; font-weight:700; }
+.split-count-field input,.split-person input,.split-item-fields input { min-width:0; height:40px; padding:0 11px; border:1px solid #dfe5ed; border-radius:8px; background:#fff; color:#26354a; font:13px 'DM Sans',sans-serif; }
+.split-people-list,.split-item-list { display:grid; gap:10px; max-height:42vh; overflow-y:auto; }
+.split-person { padding:12px; border:1px solid #e7ebf1; border-radius:10px; background:#fbfcfe; }
+.split-person > b { display:block; margin-bottom:9px; color:#344255; font-size:12px; }
+.split-person > div { display:grid; grid-template-columns:1fr 1.4fr; gap:8px; }
+.split-item-row { display:grid; grid-template-columns:20px minmax(140px,1fr) minmax(200px,1.4fr); align-items:center; gap:10px; padding:12px; border:1px solid #e7ebf1; border-radius:10px; background:#fbfcfe; }
+.split-item-row input[type=checkbox] { width:18px; height:18px; accent-color:#e76f43; }
+.split-item-row > span:nth-child(2) b,.split-item-row > span:nth-child(2) small { display:block; }
+.split-item-row > span:nth-child(2) b { color:#344255; font-size:12px; }
+.split-item-row > span:nth-child(2) small { margin-top:4px; color:#818da0; font-size:11px; }
+.split-item-fields { display:grid; gap:6px; }
+.split-item-fields input { width:100%; }
+.split-help,.split-secure-note { margin:0; color:#778499; font-size:11px; line-height:1.5; }
+.split-error { padding:10px 12px; border-radius:8px; background:#fff0ee; color:#ae4137; font-size:12px; }
+.split-create,.split-done,.split-copy,.split-retry { display:inline-flex; min-height:44px; align-items:center; justify-content:center; gap:8px; border:0; border-radius:9px; background:#e76f43; color:white; font:800 13px 'DM Sans',sans-serif; cursor:pointer; }
+.split-create:disabled,.split-retry:disabled { opacity:.6; cursor:wait; }
+.split-secure-note { text-align:center; }
+.split-results { display:grid; gap:12px; padding:18px 20px 20px; }
+.split-result { display:grid; grid-template-columns:1fr 160px; justify-items:center; align-items:center; gap:8px 15px; padding:14px; border:1px solid #e7ebf1; border-radius:12px; background:#fbfcfe; }
+.split-result-copy { display:grid; width:100%; gap:5px; }
+.split-result-copy b { color:#344255; font-size:13px; }
+.split-result-copy strong { color:#bd552f; font:800 20px Manrope,sans-serif; }
+.split-result-copy span { color:#758297; font-size:11px; }
+.split-result > img,.split-result > svg { grid-column:2; grid-row:1 / span 4; }
+.split-copy { grid-column:1; width:100%; min-height:38px; background:#edf5ff; color:#365f9a; font-size:12px; }
+.split-result textarea { grid-column:1 / -1; width:100%; min-height:55px; padding:8px; resize:vertical; border:1px solid #dfe5ed; border-radius:7px; color:#59677b; font:10px monospace; }
+.split-qr-placeholder { display:grid; width:150px; height:150px; place-content:center; justify-items:center; gap:8px; background:#f1f4f8; color:#7b8798; font-size:10px; text-align:center; }
+.split-retry { grid-column:1 / -1; width:100%; min-height:36px; background:#fff0e8; color:#ba5732; font-size:12px; }
+.split-done { width:100%; }
+:root[data-theme='dark'] .split-dialog,:root[data-theme='dark'] .split-person,:root[data-theme='dark'] .split-item-row,:root[data-theme='dark'] .split-result { border-color:#334158; background:#182335; color:#e7edf5; }
+:root[data-theme='dark'] .split-dialog > header h2,:root[data-theme='dark'] .split-person > b,:root[data-theme='dark'] .split-item-row > span:nth-child(2) b,:root[data-theme='dark'] .split-result-copy b { color:#e7edf5; }
+:root[data-theme='dark'] .split-person input,:root[data-theme='dark'] .split-item-fields input,:root[data-theme='dark'] .split-result textarea { border-color:#3a4960; background:#111b2a; color:#e7edf5; }
+
 .table-qr-modal {
   width: min(480px, 100%);
 }
@@ -1343,6 +1389,13 @@
 
 /* Garcom e atendimento QR usam o mesmo layout confortavel no celular. */
 @media (max-width: 680px) {
+  .split-backdrop { padding:0; align-items:end; }
+  .split-dialog { width:100%; max-height:94dvh; border-radius:16px 16px 0 0; }
+  .split-dialog > header,.split-form,.split-results { padding-left:15px; padding-right:15px; }
+  .split-item-row { grid-template-columns:20px minmax(0,1fr); }
+  .split-item-fields { grid-column:2; }
+  .split-result { grid-template-columns:1fr 130px; }
+  .split-result > img,.split-result > svg { width:130px; height:130px; }
   .sidebar {
     position: sticky;
     top: 0;
