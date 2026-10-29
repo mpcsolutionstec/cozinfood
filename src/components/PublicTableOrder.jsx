@@ -48,6 +48,11 @@ export default function PublicTableOrder({ qrToken }) {
       if (openOrder) {
         setReceipt({ order_id: openOrder.order_id, order_number: openOrder.order_number, total: openOrder.total, table_number: data.table_number });
         setLiveStatus(openOrder);
+      } else if (!openOrderError) {
+        // The previous comanda was closed; don't show its cached receipt to
+        // the next customer opening this table's QR code.
+        setReceipt(null);
+        setLiveStatus(null);
       } else if (openOrderError) {
         // Keep the local fallback when the database recovery migration has not been applied yet.
         console.warn('Unable to recover the open table order:', openOrderError.message);
