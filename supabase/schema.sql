@@ -247,7 +247,17 @@ begin
         select x.* from public.recipes x
         where x.product_id = p.id
           and (x.product_fraction_id = fp.product_fraction_id or x.product_fraction_id is null)
-          and (x.product_fraction_id is null or not exists(select 1 from public.recipes e where e.product_id = p.id and e.product_fraction_id = fp.product_fraction_id))
+          and (
+            x.product_fraction_id = fp.product_fraction_id
+            or (
+              x.product_fraction_id is null
+              and not exists (
+                select 1 from public.recipes e
+                where e.product_id = p.id
+                  and e.product_fraction_id = fp.product_fraction_id
+              )
+            )
+          )
       ) rc on true
       join public.ingredients_stock s on s.id = rc.ingredient_id
       group by rc.ingredient_id
