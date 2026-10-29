@@ -125,6 +125,7 @@ export default function KitchenDisplay() {
       return now - started >= Math.max(1, Number(item.prep_minutes || 15)) * 60000;
     })
     .map(item => item.id), [orders, now]);
+  const lateSignature = lateItemIds.join('|');
 
   useEffect(() => {
     const current = new Set(lateItemIds);
@@ -139,6 +140,20 @@ export default function KitchenDisplay() {
     }
     alertedItems.current = current;
   }, [lateItemIds, soundEnabled]);
+
+  useEffect(() => {
+    if (!soundEnabled || !lateSignature) return undefined;
+    const repeatAlarm = () => {
+      const context = audioContext.current;
+      if (!context) return;
+      if (context.state === 'running') playAlertTone(context);
+      else if (context.state === 'suspended') context.resume().then(() => {
+        if (context.state === 'running') playAlertTone(context);
+      }).catch(() => {});
+    };
+    const timer = window.setInterval(repeatAlarm, 20000);
+    return () => window.clearInterval(timer);
+  }, [lateSignature, soundEnabled]);
 
   const enableSound = async () => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -228,7 +243,7 @@ export default function KitchenDisplay() {
         const additions = displayParts(group.additions);
         const busy = group.ids.some(id => busyIds.includes(id));
         return <article className={`kds-ticket ${urgency} ${group.status}`} key={group.key}>
-          <header className="kds-ticket-header"><div><span className="kds-ticket-order">{formatOrigin(group)}</span><span className={`kds-ticket-status ${group.status}`}>{statusLabel[group.status]}</span></div><div className={`kds-ticket-timer ${urgency}`}><Clock3 size={15}/><strong>{group.status === 'pronto' ? 'PRONTO' : formatTime(elapsed)}</strong></div></header>
+          <header className="kds-ticket-header"><div><span className="kds-ticket-order">{formatOrigin(group)}</span><span className={`kds-ticket-status ${group.status}`}>{statusLabel[group.status]}</span>{urgency === 'late' && <span className="kds-late-badge"><BellRing size={11}/> ATRASADO</span>}</div><div className={`kds-ticket-timer ${urgency}`}><Clock3 size={15}/><strong>{group.status === 'pronto' ? 'PRONTO' : formatTime(elapsed)}</strong></div></header>
           <div className="kds-ticket-main"><div className="kds-item-quantity">{formatQuantity(group.quantity)}<small>x</small></div><div className="kds-item-copy"><h2>{group.name}</h2>{group.fraction_label && <span className="kds-item-fraction">{group.fraction_label}</span>}
             {flavors.length > 0 && <p><b>Sabores:</b> {flavors.join(', ')}</p>}{additions.length > 0 && <p><b>Adicionais:</b> {additions.join(', ')}</p>}
             {(group.quantity > 1 || group.lineCount > 1) && <div className="kds-aggregate-badge"><Layers size={13}/><span>Total acumulado</span><b>{formatQuantity(group.quantity)} {group.quantity === 1 ? 'unidade' : 'unidades'}</b>{group.order_numbers.size > 1 && <small>em {group.order_numbers.size} pedidos</small>}</div>}

@@ -3,3 +3,14 @@
 .kds-stock-notice{display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid #c9ead6;border-radius:7px;background:#effaf3;color:#28744d;font-size:10px}.kds-stock-notice button{margin-left:auto;border:0;background:transparent;color:inherit;font:700 10px 'DM Sans';cursor:pointer}:root[data-theme='dark'] .kds-stock-notice{border-color:#315342;background:#1d342a;color:#a8e1bd}
 @media(max-width:1100px){.kds-ticket-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.kds-toolbar{align-items:flex-start;flex-direction:column}.kds-toolbar-actions{width:100%;justify-content:flex-end}}
 @media(max-width:680px){.kds-heading{align-items:flex-start;gap:10px}.kds-heading .kds-live-state{font-size:0;padding:8px}.kds-heading .kds-live-state i{width:8px;height:8px}.kds-sector-filters{width:100%;overflow:auto;padding-bottom:2px}.kds-sector-button{gap:5px;padding:0 8px;font-size:9px}.kds-sector-button svg{width:13px}.kds-toolbar{padding:9px}.kds-toolbar-actions{gap:6px}.kds-queue-count{margin-right:auto}.kds-tool-button{padding:0 8px;font-size:9px}.kds-tool-button span{display:none}.kds-board-meta{gap:10px;font-size:8px;flex-wrap:wrap}.kds-ticket-grid{grid-template-columns:1fr}.kds-ticket-main{min-height:88px}}
+
+/* Destaque para pedidos fora do prazo. O alerta sonoro e habilitado pelo cozinheiro no KDS. */
+.kds-ticket.late{animation:kds-late-pulse 1.15s ease-in-out infinite;border-color:#eb8679;}
+.kds-ticket.late .kds-ticket-header{background:#fff3f1;}
+.kds-ticket.late .kds-ticket-timer{padding:5px 7px;border-radius:7px;background:#ffe0dc;animation:kds-late-timer 1s steps(2,end) infinite;}
+.kds-late-badge{display:inline-flex;width:max-content;align-items:center;gap:4px;padding:4px 7px;border-radius:20px;background:#c94034;color:#fff;font-size:8px;font-weight:800;letter-spacing:.3px;}
+@keyframes kds-late-pulse{0%,100%{box-shadow:0 3px 10px #19243508,0 0 0 0 #e5534630;}50%{box-shadow:0 5px 18px #bd352833,0 0 0 4px #e5534630;}}
+@keyframes kds-late-timer{0%,100%{background:#ffe0dc;color:#b5332b;}50%{background:#c94034;color:#fff;}}
+:root[data-theme='dark'] .kds-ticket.late .kds-ticket-header{background:#3a252a;}
+:root[data-theme='dark'] .kds-ticket.late .kds-ticket-timer{background:#4a262d;}
+@media(prefers-reduced-motion:reduce){.kds-ticket.late,.kds-ticket.late .kds-ticket-timer{animation:none;}.kds-ticket.late{box-shadow:0 0 0 3px #e5534650;}}
