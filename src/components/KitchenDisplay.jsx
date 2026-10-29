@@ -19,6 +19,29 @@ const formatTime = ms => {
   const minutes = Math.floor(total / 60);
   return `${String(minutes).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
+function playAlertTone(context, test = false) {
+  if (!context || context.state !== 'running') return;
+  const sequence = test ? [{ frequency: 740, offset: 0, duration: 0.18 }] : [
+    { frequency: 880, offset: 0, duration: 0.15 },
+    { frequency: 660, offset: 0.21, duration: 0.15 },
+    { frequency: 880, offset: 0.42, duration: 0.2 },
+  ];
+  const startAt = context.currentTime;
+  sequence.forEach(({ frequency, offset, duration }) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const toneStart = startAt + offset;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, toneStart);
+    gain.gain.setValueAtTime(0.0001, toneStart);
+    gain.gain.exponentialRampToValueAtTime(0.3, toneStart + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, toneStart + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(toneStart);
+    oscillator.stop(toneStart + duration + 0.02);
+  });
+}
 
 export default function KitchenDisplay() {
   const [sector, setSector] = useState('all');
@@ -28,7 +51,7 @@ export default function KitchenDisplay() {
   const [busyIds, setBusyIds] = useState([]);
   const [actionError, setActionError] = useState('');
   const audioContext = useRef(null);
-  const alertedGroups = useRef(new Set());
+  const alertedItems = useRef(new Set());
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -65,32 +88,27 @@ export default function KitchenDisplay() {
     return [...grouped.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }, [orders]);
 
-  const lateGroups = useMemo(() => groups.filter(group => {
-    if (group.status === 'pronto') return false;
-    const started = new Date(group.started_at || group.created_at).getTime();
-    return now - started >= Math.max(1, group.prep_minutes) * 60000;
-  }), [groups, now]);
+  const lateItemIds = useMemo(() => orders
+    .filter(item => item.status !== 'pronto')
+    .filter(item => {
+      const started = new Date(item.started_at || item.created_at).getTime();
+      return now - started >= Math.max(1, Number(item.prep_minutes || 15)) * 60000;
+    })
+    .map(item => item.id), [orders, now]);
 
   useEffect(() => {
-    const current = new Set(lateGroups.map(group => group.key));
-    const newlyLate = [...current].some(key => !alertedGroups.current.has(key));
+    const current = new Set(lateItemIds);
+    const newlyLate = [...current].some(id => !alertedItems.current.has(id));
     if (soundEnabled && newlyLate) {
       const context = audioContext.current;
-      if (context) {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.frequency.value = 880;
-        gain.gain.setValueAtTime(0.0001, context.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.32);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.34);
-      }
+      if (context?.state === 'running') playAlertTone(context);
+      else if (context) context.resume().then(() => {
+        if (context.state === 'running') playAlertTone(context);
+        else setActionError('O áudio continua bloqueado. Clique em “Testar som” e confira o volume do dispositivo.');
+      }).catch(() => setActionError('O navegador bloqueou o áudio. Clique em “Testar som” e confira o volume do dispositivo.'));
     }
-    alertedGroups.current = current;
-  }, [lateGroups, soundEnabled]);
+    alertedItems.current = current;
+  }, [lateItemIds, soundEnabled]);
 
   const enableSound = async () => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -98,10 +116,31 @@ export default function KitchenDisplay() {
       setActionError('Este navegador não oferece suporte ao alerta sonoro.');
       return;
     }
-    if (!audioContext.current) audioContext.current = new AudioContextClass();
-    await audioContext.current.resume();
-    setSoundEnabled(true);
-    setActionError('');
+    try {
+      if (!audioContext.current || audioContext.current.state === 'closed') audioContext.current = new AudioContextClass();
+      await audioContext.current.resume();
+      if (audioContext.current.state !== 'running') throw new Error('AudioContext suspended');
+      playAlertTone(audioContext.current, true);
+      alertedItems.current = new Set();
+      setSoundEnabled(true);
+      setActionError('');
+    } catch {
+      setSoundEnabled(false);
+      setActionError('Não foi possível iniciar o áudio. Verifique as permissões e o volume do navegador.');
+    }
+  };
+
+  const testSound = async () => {
+    try {
+      const context = audioContext.current;
+      if (!context) return enableSound();
+      await context.resume();
+      if (context.state !== 'running') throw new Error('AudioContext suspended');
+      playAlertTone(context, true);
+      setActionError('');
+    } catch {
+      setActionError('Não foi possível reproduzir o teste. Verifique o volume e as permissões de áudio do navegador.');
+    }
   };
 
   const advance = async group => {
@@ -139,6 +178,7 @@ export default function KitchenDisplay() {
       </button>)}</div>
       <div className="kds-toolbar-actions"><span className="kds-queue-count"><b>{formatQuantity(activeQuantity)}</b> itens na fila</span>
         <button className={`kds-tool-button ${soundEnabled ? 'sound-on' : ''}`} onClick={soundEnabled ? () => setSoundEnabled(false) : enableSound} title={soundEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'}>{soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}<span>{soundEnabled ? 'Som ligado' : 'Ativar som'}</span></button>
+        {soundEnabled && <button className="kds-tool-button sound-on" onClick={testSound} title="Reproduzir som de teste"><BellRing size={16}/><span>Testar som</span></button>}
         <button className="kds-tool-button refresh-kds" onClick={refresh} disabled={loading}><RefreshCw size={15} className={loading ? 'is-spinning' : ''}/><span>Atualizar</span></button>
       </div>
     </div>
