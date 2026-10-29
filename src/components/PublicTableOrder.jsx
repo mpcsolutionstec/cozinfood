@@ -14,15 +14,20 @@ const orderStatusMeta = {
 };
 
 export default function PublicTableOrder({ qrToken }) {
+  const storageKey = `cozinfood:public-table-order:${qrToken}`;
+  const readSavedOrder = () => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; }
+    catch { return {}; }
+  };
   const [menu, setMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [categoryId, setCategoryId] = useState('all');
-  const [cart, setCart] = useState([]);
-  const [customerName, setCustomerName] = useState('');
-  const [orderNote, setOrderNote] = useState('');
+  const [cart, setCart] = useState(() => readSavedOrder().cart || []);
+  const [customerName, setCustomerName] = useState(() => readSavedOrder().customerName || '');
+  const [orderNote, setOrderNote] = useState(() => readSavedOrder().orderNote || '');
   const [sending, setSending] = useState(false);
-  const [receipt, setReceipt] = useState(null);
+  const [receipt, setReceipt] = useState(() => readSavedOrder().receipt || null);
   const [liveStatus, setLiveStatus] = useState(null);
   const [cartVisible, setCartVisible] = useState(false);
 
@@ -37,11 +42,43 @@ export default function PublicTableOrder({ qrToken }) {
     const { data, error: menuError } = await supabase.rpc('get_public_table_menu', { p_qr_token: qrToken });
     if (menuError) setError(`Não foi possível abrir o cardápio: ${menuError.message}`);
     else if (!data) setError('Este QR Code não é válido. Peça ajuda a um atendente.');
-    else setMenu(data);
+    else {
+      setMenu(data);
+      const { data: openOrder, error: openOrderError } = await supabase.rpc('get_public_table_open_order', { p_qr_token: qrToken });
+      if (openOrder) {
+        setReceipt({ order_id: openOrder.order_id, order_number: openOrder.order_number, total: openOrder.total, table_number: data.table_number });
+        setLiveStatus(openOrder);
+      } else if (openOrderError) {
+        // Keep the local fallback when the database recovery migration has not been applied yet.
+        console.warn('Unable to recover the open table order:', openOrderError.message);
+      }
+    }
     setLoading(false);
   };
 
   useEffect(() => { loadMenu(); }, [qrToken]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ cart, customerName, orderNote, receipt }));
+    } catch {
+      setError('NÃ£o foi possÃ­vel salvar este pedido no navegador. Verifique o armazenamento do site.');
+    }
+  }, [storageKey, cart, customerName, orderNote, receipt]);
+  useEffect(() => {
+    if (!menu || cart.length === 0) return;
+    const catalog = new Map((menu.categories || []).flatMap(category => category.products || []).map(product => [product.id, product]));
+    setCart(current => {
+      let changed = false;
+      const hydrated = current.map(item => {
+        const product = catalog.get(item.product?.id);
+        if (!product || item.product === product) return item;
+        changed = true;
+        const fraction = item.fraction?.id ? product.fractions?.find(option => option.id === item.fraction.id) || item.fraction : null;
+        return { ...item, product, fraction };
+      });
+      return changed ? hydrated : current;
+    });
+  }, [menu, cart.length]);
   useEffect(() => {
     if (!receipt?.order_id) return undefined;
     let active = true;
