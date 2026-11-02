@@ -1,5 +1,8 @@
 [functions.create-split-pix]
 verify_jwt = false
 
+[functions.create-pos-pix]
+verify_jwt = true
+
 [functions.mercadopago-webhook]
 verify_jwt = false
