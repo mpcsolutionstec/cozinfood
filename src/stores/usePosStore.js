@@ -9,12 +9,13 @@ export const usePosStore = create(persist((set, get) => ({
   setMode: mode => set({ mode, selectedTable: mode === 'balcao' ? null : get().selectedTable }),
   setSelectedTable: selectedTable => set({ selectedTable }),
   setActiveOrder: activeOrder => set({ activeOrder }),
-  addItem: (product, fraction = null, additions = []) => set(state => {
+  addItem: (product, fraction = null, additions = [], flavors = [], unitPrice = null) => set(state => {
     const additionKey = additions.map(addition => addition.id).sort().join(',');
-    const key = `${product.id}:${fraction?.id || 'base'}:${additionKey}`;
+    const flavorKey = flavors.map(flavor => `${flavor.product.id}:${flavor.fraction?.id}:${flavor.share}`).join(',');
+    const key = `${product.id}:${fraction?.id || 'base'}:${flavorKey}:${additionKey}`;
     const current = state.cart.find(item => item.key === key);
     if (current) return { cart: state.cart.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item) };
-    return { cart: [...state.cart, { key, product, fraction, additions, quantity: 1, notes: '' }] };
+    return { cart: [...state.cart, { key, product, fraction, additions, flavors, unitPrice, quantity: 1, notes: '' }] };
   }),
   setQuantity: (key, quantity) => set(state => ({ cart: state.cart
     .map(item => item.key === key ? { ...item, quantity: Math.max(0, Number(quantity) || 0) } : item)
@@ -27,7 +28,12 @@ export const usePosStore = create(persist((set, get) => ({
       const product = byProduct.get(item.product.id);
       if (!product) return item;
       const fraction = item.fraction?.id ? product.product_fractions?.find(option => option.id === item.fraction.id) || item.fraction : null;
-      return { ...item, product, fraction, additions: (item.additions || []).map(addition => byAddition.get(addition.id) || addition) };
+      const flavors = (item.flavors || []).map(flavor => {
+        const flavorProduct = byProduct.get(flavor.product.id) || flavor.product;
+        const flavorFraction = flavor.fraction?.id ? flavorProduct.product_fractions?.find(option => option.id === flavor.fraction.id) || flavor.fraction : null;
+        return { ...flavor, product: flavorProduct, fraction: flavorFraction };
+      });
+      return { ...item, product, fraction, flavors, additions: (item.additions || []).map(addition => byAddition.get(addition.id) || addition) };
     }) };
   }),
   removeItem: key => set(state => ({ cart: state.cart.filter(item => item.key !== key) })),

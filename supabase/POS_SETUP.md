@@ -11,6 +11,11 @@ barras e instala as funções transacionais do PDV.
 Execute este script depois do schema base e das migrações anteriores do
 COZINFOOD, especialmente a migração de pagamentos Pix das comandas.
 
+Depois, execute também `migrations/20261102130000_pos_fractional_pizza_flavors.sql`.
+Essa atualização valida no banco os sabores e tamanhos das pizzas fracionadas,
+recalcula o preço conforme a regra do restaurante e grava as frações usadas
+pela baixa de insumos quando a cozinha marca o item como pronto.
+
 ## Pix dinâmico
 
 Publique a função `create-pos-pix` no Supabase e mantenha configurado o segredo

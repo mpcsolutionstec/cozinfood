@@ -151,6 +151,9 @@
 .pos-addition-options strong { color:#ab6242; font-size:9px; white-space:nowrap; }
 .pos-customize-total { display:flex; align-items:center; justify-content:space-between; margin:12px 0; padding:12px 0; border-top:1px solid #edf0f3; color:#59677c; font-size:10px; }
 .pos-customize-total b { color:#b84e31; font:800 17px Manrope,sans-serif; }
+.pos-pizza-flavors { display:grid; gap:9px; margin:14px 0; padding:12px; border:1px solid #f0ddd3; border-radius:10px; background:#fff9f6; }
+.pos-pizza-flavors>label { display:grid; gap:5px; color:#6c788a; font-size:9px; font-weight:700; }
+.pos-pizza-flavors>small { color:#9a705e; font-size:9px; }
 :root[data-theme='dark'] .pos-catalog-panel,:root[data-theme='dark'] .pos-ticket,:root[data-theme='dark'] .pos-modal { border-color:#2c394d; background:#182335; color:#e7edf5; }
 :root[data-theme='dark'] .pos-section-heading h2,:root[data-theme='dark'] .pos-ticket-header h2,:root[data-theme='dark'] .pos-product-info>b,:root[data-theme='dark'] .pos-cart-line-main>b,:root[data-theme='dark'] .pos-ticket-total { color:#e7edf5; }
 :root[data-theme='dark'] .pos-product,:root[data-theme='dark'] .pos-modes,:root[data-theme='dark'] .pos-search,:root[data-theme='dark'] .pos-search input,:root[data-theme='dark'] .pos-product-add,:root[data-theme='dark'] .pos-product-fractions button,:root[data-theme='dark'] .pos-category-list button,:root[data-theme='dark'] .pos-secondary,:root[data-theme='dark'] .pos-modal-close,:root[data-theme='dark'] .pos-modal input,:root[data-theme='dark'] .pos-modal select { border-color:#344256; background:#202e43; color:#e0e7f0; }

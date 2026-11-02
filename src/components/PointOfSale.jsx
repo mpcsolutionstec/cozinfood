@@ -35,6 +35,7 @@ export default function PointOfSale() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [availableAdditions, setAvailableAdditions] = useState([]);
+  const [fractionPricing, setFractionPricing] = useState('maior_valor');
   const [orderItems, setOrderItems] = useState([]);
   const [register, setRegister] = useState(null);
   const [search, setSearch] = useState('');
@@ -54,6 +55,9 @@ export default function PointOfSale() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [customProduct, setCustomProduct] = useState(null);
   const [customFraction, setCustomFraction] = useState(null);
+  const [customSizeName, setCustomSizeName] = useState('');
+  const [customFlavorCount, setCustomFlavorCount] = useState(1);
+  const [customFlavorIds, setCustomFlavorIds] = useState([]);
   const [customAdditions, setCustomAdditions] = useState([]);
   const searchRef = useRef(null);
   const isCashier = ['admin', 'caixa'].includes(profile?.role);
@@ -68,19 +72,21 @@ export default function PointOfSale() {
 
   const loadCatalog = useCallback(async () => {
     if (!supabase || !profile?.restaurant_id) return;
-    const [categoryResult, productResult, additionResult] = await Promise.all([
+    const [categoryResult, productResult, additionResult, restaurantResult] = await Promise.all([
       supabase.from('categories').select('id,name,sort_order').eq('restaurant_id', profile.restaurant_id).eq('active', true).order('sort_order'),
-      supabase.from('products').select('id,name,description,base_price,prep_minutes,destination_sector,image_path,barcode,category_id,categories(name),product_fractions(id,name,price,serves,active)')
+      supabase.from('products').select('id,name,description,base_price,prep_minutes,destination_sector,image_path,barcode,category_id,categories(name,slug),product_fractions(id,name,price,serves,active)')
         .eq('restaurant_id', profile.restaurant_id).eq('active', true).order('name'),
       supabase.from('product_additions').select('id,name,price').eq('restaurant_id', profile.restaurant_id).eq('active', true).order('name'),
+      supabase.from('restaurants').select('fraction_pricing').eq('id', profile.restaurant_id).single(),
     ]);
-    if (categoryResult.error || productResult.error || additionResult.error) {
-      setError(`Falha ao carregar o cardapio: ${(categoryResult.error || productResult.error || additionResult.error).message}`);
+    if (categoryResult.error || productResult.error || additionResult.error || restaurantResult.error) {
+      setError(`Falha ao carregar o cardapio: ${(categoryResult.error || productResult.error || additionResult.error || restaurantResult.error).message}`);
       return;
     }
     setCategories(categoryResult.data || []);
     setProducts((productResult.data || []).map(product => ({ ...product, product_fractions: (product.product_fractions || []).filter(fraction => fraction.active) })));
     setAvailableAdditions(additionResult.data || []);
+    setFractionPricing(restaurantResult.data?.fraction_pricing || 'maior_valor');
     usePosStore.getState().hydrateCatalog(
       (productResult.data || []).map(product => ({ ...product, product_fractions: (product.product_fractions || []).filter(fraction => fraction.active) })),
       additionResult.data || [],
@@ -150,7 +156,7 @@ export default function PointOfSale() {
       .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(needle));
     return matchesCategory && matchesSearch;
   }), [products, categoryId, search]);
-  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (Number(item.fraction?.price ?? item.product.base_price) + (item.additions || []).reduce((total, addition) => total + Number(addition.price || 0) * Number(addition.quantity || 1), 0)) * item.quantity, 0), [cart]);
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price) + (item.additions || []).reduce((total, addition) => total + Number(addition.price || 0) * Number(addition.quantity || 1), 0)) * item.quantity, 0), [cart]);
   const activeOrderTotal = Number(activeOrder?.total || 0);
   const totalDue = Math.max(0, activeOrderTotal + cartTotal - Number(activeOrder?.paid_amount || 0));
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -178,7 +184,7 @@ export default function PointOfSale() {
       tableId: mode === 'salao' ? selectedTable.id : null,
       orderId: activeOrder?.id,
       customerName: '',
-      items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.fraction?.id || null, quantity: item.quantity, notes: item.notes, additions: (item.additions || []).map(addition => ({ id: addition.id, quantity: 1 })) })),
+      items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.fraction?.id || null, quantity: item.quantity, notes: item.notes, additions: (item.additions || []).map(addition => ({ id: addition.id, quantity: addition.quantity || 1 })), flavors: (item.flavors || []).map(flavor => ({ product_id: flavor.product.id, product_fraction_id: flavor.fraction?.id || null, fraction: flavor.share })) })),
     });
     setActiveOrder({ ...saved, paid_amount: activeOrder?.paid_amount || 0 });
     clearCart();
@@ -308,14 +314,38 @@ export default function PointOfSale() {
   };
 
   const customizeProduct = (product, fraction = null) => {
-    setCustomProduct(product); setCustomFraction(fraction); setCustomAdditions([]); setError(''); setDialog('customize');
+    const initialSize = fraction?.name || product.product_fractions?.[0]?.name || '';
+    setCustomProduct(product); setCustomFraction(fraction); setCustomSizeName(initialSize);
+    setCustomFlavorCount(1); setCustomFlavorIds([product.id]); setCustomAdditions([]); setError(''); setDialog('customize');
   };
   const addCustomizedProduct = () => {
     if (!customProduct) return;
-    addProduct(customProduct, customFraction, customAdditions);
+    const isPizza = customProduct.categories?.slug === 'pizzas';
+    const selectedFlavors = isPizza ? customFlavorIds.slice(0, customFlavorCount).map(id => {
+      const product = products.find(option => option.id === id);
+      const fraction = product?.product_fractions?.find(option => option.name === customSizeName);
+      return product && fraction ? { product, fraction, share: 1 / customFlavorCount } : null;
+    }).filter(Boolean) : [];
+    if (isPizza && selectedFlavors.length !== customFlavorCount) { setError('Escolha todos os sabores e confirme o tamanho da pizza.'); return; }
+    const primaryProduct = selectedFlavors[0]?.product || customProduct;
+    const primaryFraction = selectedFlavors[0]?.fraction || customFraction;
+    const prices = selectedFlavors.map(flavor => Number(flavor.fraction.price));
+    const basePrice = selectedFlavors.length
+      ? fractionPricing === 'media_ponderada' ? prices.reduce((sum, price) => sum + price / prices.length, 0) : Math.max(...prices)
+      : Number(primaryFraction?.price ?? primaryProduct.base_price);
+    addItem(primaryProduct, primaryFraction, customAdditions, selectedFlavors, basePrice);
     setDialog(''); setCustomProduct(null); setCustomFraction(null); setCustomAdditions([]);
   };
-  const customPrice = Number(customFraction?.price ?? customProduct?.base_price ?? 0)
+  const customSelectedFlavors = customProduct?.categories?.slug === 'pizzas' ? customFlavorIds.slice(0, customFlavorCount).map(id => {
+    const product = products.find(option => option.id === id);
+    return product ? { product, fraction: product.product_fractions?.find(option => option.name === customSizeName) } : null;
+  }).filter(Boolean) : [];
+  const customBasePrice = customSelectedFlavors.length
+    ? fractionPricing === 'media_ponderada'
+      ? customSelectedFlavors.reduce((sum, flavor) => sum + Number(flavor.fraction?.price || 0) / customSelectedFlavors.length, 0)
+      : Math.max(...customSelectedFlavors.map(flavor => Number(flavor.fraction?.price || 0)))
+    : Number(customFraction?.price ?? customProduct?.base_price ?? 0);
+  const customPrice = customBasePrice
     + customAdditions.reduce((sum, addition) => sum + Number(addition.price || 0), 0);
 
   return <section className="pos-page" aria-label="Ponto de venda">
@@ -357,7 +387,7 @@ export default function PointOfSale() {
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-product-placeholder"><ChefHat size={23}/></span>}
             <div className="pos-product-info"><span>{product.categories?.name || 'Cardápio'}</span><b>{product.name}</b>{product.description && <small>{product.description}</small>}</div>
             {fractions.length ? <div className="pos-product-fractions">{fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}</span><b>{money(fraction.price)}<Plus size={14}/></b></button>)}</div> : <button className="pos-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={17}/></span></button>}
-            {availableAdditions.length > 0 && <button className="pos-customize-product" onClick={() => customizeProduct(product)}><Plus size={13}/> Personalizar / adicionais</button>}
+            {(availableAdditions.length > 0 || product.categories?.slug === 'pizzas') && <button className="pos-customize-product" onClick={() => customizeProduct(product)}><Plus size={13}/> {product.categories?.slug === 'pizzas' ? 'Montar pizza / adicionais' : 'Personalizar / adicionais'}</button>}
           </article>;
         })}</div>}
       </section>
@@ -367,11 +397,11 @@ export default function PointOfSale() {
         {mode === 'salao' && !selectedTable && <div className="pos-ticket-empty"><Utensils size={28}/><b>Escolha uma mesa</b><span>O pedido será associado a ela.</span></div>}
         {mode === 'salao' && selectedTable && orderItems.length > 0 && <section className="pos-existing-items"><div className="pos-subheading"><b>Itens da comanda</b><small>{activeOrder ? `#${activeOrder.order_number}` : ''}</small></div>{orderItems.filter(item => item.status !== 'cancelado').map(item => <div className="pos-existing-item" key={item.id}><span className="pos-item-qty">{Number(item.quantity)}×</span><div className="pos-item-description"><b>{item.name}</b><small>{item.fraction_label || itemStatus[item.status] || item.status}</small></div><strong>{money(item.line_total)}</strong>{item.status === 'pendente' && <button className="pos-cancel-item" onClick={() => cancelOrderItem(item)} disabled={busy} aria-label={`Cancelar ${item.name}`} title={noticeItemId === item.id ? 'Clique novamente para confirmar' : 'Cancelar item'}>{noticeItemId === item.id ? <Check size={15}/> : <Trash2 size={15}/>}</button>}</div>)}</section>}
         {cart.length > 0 && <section className="pos-cart-items"><div className="pos-subheading"><b>{mode === 'salao' ? 'Novos itens' : 'Itens da venda'}</b><small>{itemCount}</small></div>{cart.map(item => {
-          const price = Number(item.fraction?.price ?? item.product.base_price) + (item.additions || []).reduce((sum, addition) => sum + Number(addition.price || 0) * Number(addition.quantity || 1), 0);
+          const price = Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price) + (item.additions || []).reduce((sum, addition) => sum + Number(addition.price || 0) * Number(addition.quantity || 1), 0);
           const image = publicImage(item.product.image_path);
           return <article className="pos-cart-line" key={item.key}>
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-cart-placeholder"><ShoppingCart size={15}/></span>}
-            <div className="pos-cart-line-main"><b>{item.product.name}</b>{item.fraction && <small>{item.fraction.name}</small>}{item.additions?.length > 0 && <small>{item.additions.map(addition => addition.name).join(', ')}</small>}<input value={item.notes} onChange={event => setNote(item.key, event.target.value)} placeholder="Observação (opcional)" aria-label={`Observação para ${item.product.name}`}/><div className="pos-quantity"><button onClick={() => setQuantity(item.key, item.quantity - 1)} aria-label="Diminuir quantidade"><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => setQuantity(item.key, item.quantity + 1)} aria-label="Aumentar quantidade"><Plus size={14}/></button></div></div>
+            <div className="pos-cart-line-main"><b>{item.flavors?.length > 1 ? `Pizza · ${item.flavors.length} sabores` : item.product.name}</b>{item.fraction && <small>{item.fraction.name}</small>}{item.flavors?.length > 1 && <small>{item.flavors.map(flavor => `${Math.round(flavor.share * 100)}% ${flavor.product.name}`).join(' · ')}</small>}{item.additions?.length > 0 && <small>Adicionais: {item.additions.map(addition => addition.name).join(', ')}</small>}<input value={item.notes} onChange={event => setNote(item.key, event.target.value)} placeholder="Observação (opcional)" aria-label={`Observação para ${item.product.name}`}/><div className="pos-quantity"><button onClick={() => setQuantity(item.key, item.quantity - 1)} aria-label="Diminuir quantidade"><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => setQuantity(item.key, item.quantity + 1)} aria-label="Aumentar quantidade"><Plus size={14}/></button></div></div>
             <div className="pos-cart-line-total"><b>{money(price * item.quantity)}</b><small>{money(price)} cada</small><button onClick={() => removeItem(item.key)} aria-label="Remover do carrinho"><Trash2 size={15}/></button></div>
           </article>;
         })}</section>}
@@ -396,9 +426,10 @@ export default function PointOfSale() {
       </form>}
       {dialog === 'customize' && customProduct && <section className="pos-modal pos-customize-modal" role="dialog" aria-modal="true" aria-labelledby="pos-customize-title">
         <button type="button" className="pos-modal-close" onClick={() => setDialog('')} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><ChefHat size={23}/></span><h2 id="pos-customize-title">Personalizar item</h2><p>{customProduct.name}</p>
-        {(customProduct.product_fractions || []).length > 0 && <label>Tamanho<select value={customFraction?.id || ''} onChange={event => setCustomFraction(customProduct.product_fractions.find(fraction => fraction.id === event.target.value) || null)}><option value="">Selecione um tamanho</option>{customProduct.product_fractions.map(fraction => <option key={fraction.id} value={fraction.id}>{fraction.name} · {money(fraction.price)}</option>)}</select></label>}
+        {(customProduct.product_fractions || []).length > 0 && <label>Tamanho<select value={customSizeName} onChange={event => { const size = event.target.value; setCustomSizeName(size); setCustomFraction(customProduct.product_fractions.find(fraction => fraction.name === size) || null); }}><option value="">Selecione um tamanho</option>{customProduct.product_fractions.map(fraction => <option key={fraction.id} value={fraction.name}>{fraction.name} · {money(fraction.price)}</option>)}</select></label>}
+        {customProduct.categories?.slug === 'pizzas' && <div className="pos-pizza-flavors"><label>Quantidade de sabores<select value={customFlavorCount} onChange={event => { const count = Number(event.target.value); setCustomFlavorCount(count); setCustomFlavorIds(current => Array.from({ length: count }, (_, index) => current[index] || customProduct.id)); }}>{[1,2,3,4].map(count => <option key={count} value={count}>{count} {count === 1 ? 'sabor' : 'sabores'}</option>)}</select></label>{Array.from({ length: customFlavorCount }, (_, index) => <label key={index}>{customFlavorCount === 1 ? 'Sabor' : `Sabor da fração ${index + 1}`}<select value={customFlavorIds[index] || ''} onChange={event => setCustomFlavorIds(current => current.map((id, slot) => slot === index ? event.target.value : id))}><option value="">Selecione um sabor</option>{products.filter(option => option.categories?.slug === 'pizzas' && option.product_fractions?.some(fraction => fraction.name === customSizeName)).map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>)}<small>Preço automático: {fractionPricing === 'maior_valor' ? 'maior valor entre os sabores' : 'média ponderada dos sabores'}.</small></div>}
         <div className="pos-addition-options"><b>Adicionais</b>{availableAdditions.map(addition => <label key={addition.id}><span><input type="checkbox" checked={customAdditions.some(item => item.id === addition.id)} onChange={event => setCustomAdditions(current => event.target.checked ? [...current, addition] : current.filter(item => item.id !== addition.id))}/>{addition.name}</span><strong>{Number(addition.price) > 0 ? `+ ${money(addition.price)}` : 'Grátis'}</strong></label>)}</div>
-        {error && <p className="pos-modal-error">{error}</p>}<div className="pos-customize-total"><span>Preço do item</span><b>{money(customPrice)}</b></div><button type="button" className="pos-primary" onClick={addCustomizedProduct} disabled={Boolean(customProduct.accepts_fractions && customProduct.product_fractions?.length && !customFraction)}><Plus size={17}/> Adicionar ao pedido</button>
+        {error && <p className="pos-modal-error">{error}</p>}<div className="pos-customize-total"><span>Preço do item</span><b>{money(customPrice)}</b></div><button type="button" className="pos-primary" onClick={addCustomizedProduct} disabled={Boolean(customProduct.accepts_fractions && customProduct.product_fractions?.length && !customFraction) || Boolean(customProduct.categories?.slug === 'pizzas' && (customSelectedFlavors.length !== customFlavorCount || customSelectedFlavors.some(flavor => !flavor.fraction)))}><Plus size={17}/> Adicionar ao pedido</button>
       </section>}
       {dialog === 'payment' && <form className="pos-modal pos-payment-modal" onSubmit={submitPayment}>
         <button type="button" className="pos-modal-close" onClick={() => { setDialog(''); setPix(null); }} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><CircleDollarSign size={23}/></span><h2>Finalizar venda</h2><p>{activeOrder ? `Comanda #${activeOrder.order_number}` : mode === 'salao' ? `Mesa ${selectedTable?.number || ''}` : 'Venda rápida no balcão'}</p><div className="pos-payment-total"><span>Saldo a pagar</span><b>{money(totalDue)}</b></div>
