@@ -19,6 +19,7 @@ import './qr-cart.css';
 import './confirm-dialog.css';
 import './theme.css';
 import './pos.css';
+import './products.css';
 const tableQrToken = new URLSearchParams(window.location.search).get('mesa');
 const digitalMenuSlug = new URLSearchParams(window.location.search).get('cardapio');
 const app = tableQrToken ? <PublicTableOrder qrToken={tableQrToken}/> : digitalMenuSlug ? <PublicDigitalMenu slug={digitalMenuSlug}/> : <AuthGate><App /></AuthGate>;
