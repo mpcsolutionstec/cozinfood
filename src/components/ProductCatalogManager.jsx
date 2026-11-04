@@ -128,11 +128,11 @@ export default function ProductCatalogManager() {
             </div>
           </section>
           <section className="product-form-section"><div className="product-form-section-heading"><span>02</span><div><b>Preço e estoque</b><small>Valores de venda e controle de quantidade</small></div></div>
-            <div className="product-form-grid product-pricing-grid"><label>Preço de custo <em>*</em><div className="product-input-prefix"><span>R$</span><input type="number" min="0" step="0.01" value={form.cost_price} onChange={event => set('cost_price', event.target.value)} placeholder="0,00" required/></div></label>
-              <label>Preço de venda <em>*</em><div className="product-input-prefix"><span>R$</span><input type="number" min="0" step="0.01" value={form.sale_price} onChange={event => set('sale_price', event.target.value)} placeholder="0,00" required/></div></label>
-              <label>Estoque atual<input type="number" min="0" step="0.001" value={form.stock_quantity} onChange={event => set('stock_quantity', event.target.value)} placeholder="0"/></label>
-              <label>Estoque mínimo<input type="number" min="0" step="0.001" value={form.min_stock} onChange={event => set('min_stock', event.target.value)} placeholder="5"/></label>
-              <label>Unidade de medida<select value={form.unit_measure} onChange={event => set('unit_measure', event.target.value)}>{units.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select></label>
+            <div className="product-form-grid product-pricing-grid"><label className="product-price-field">Preço de custo <em>*</em><div className="product-input-prefix"><span>R$</span><input type="number" min="0" step="0.01" value={form.cost_price} onChange={event => set('cost_price', event.target.value)} placeholder="0,00" required/></div></label>
+              <label className="product-price-field">Preço de venda <em>*</em><div className="product-input-prefix"><span>R$</span><input type="number" min="0" step="0.01" value={form.sale_price} onChange={event => set('sale_price', event.target.value)} placeholder="0,00" required/></div></label>
+              <label className="product-stock-field">Estoque atual<input type="number" min="0" step="0.001" value={form.stock_quantity} onChange={event => set('stock_quantity', event.target.value)} placeholder="0"/></label>
+              <label className="product-stock-field">Estoque mínimo<input type="number" min="0" step="0.001" value={form.min_stock} onChange={event => set('min_stock', event.target.value)} placeholder="5"/></label>
+              <label className="product-stock-field">Unidade de medida<select value={form.unit_measure} onChange={event => set('unit_measure', event.target.value)}>{units.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select></label>
             </div>
           </section>
           <section className="product-form-section"><div className="product-form-section-heading"><span>03</span><div><b>Operação e disponibilidade</b><small>Destino do pedido e exibição no cardápio</small></div></div>
