@@ -123,8 +123,8 @@ export default function ProductCatalogManager() {
           <section className="product-form-section"><div className="product-form-section-heading"><span>01</span><div><b>Informações do produto</b><small>Identificação e organização no catálogo</small></div></div>
             <div className="product-form-grid"><label className="span-two">Nome do produto <em>*</em><input autoFocus value={form.name} onChange={event => set('name', event.target.value)} placeholder="Ex.: Refrigerante lata 350 ml" maxLength={100} required/></label>
               <label>Categoria <em>*</em><select value={form.category_id} onChange={event => set('category_id', event.target.value)} required><option value="" disabled>Selecione uma categoria</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-              <label>Código de barras <span className="optional">Opcional</span><div className="product-input-icon"><Barcode size={15}/><input value={form.barcode} onChange={event => set('barcode', event.target.value)} placeholder="EAN ou código interno" maxLength={80}/></div></label>
-              <label className="span-two">Descrição <span className="optional">Opcional</span><input value={form.description} onChange={event => set('description', event.target.value)} placeholder="Detalhes que ajudam a identificar o produto" maxLength={300}/></label>
+              <label><span className="product-field-title">Código de barras <span className="optional">Opcional</span></span><div className="product-input-icon"><Barcode size={15}/><input value={form.barcode} onChange={event => set('barcode', event.target.value)} placeholder="EAN ou código interno" maxLength={80}/></div></label>
+              <label className="span-two"><span className="product-field-title">Descrição <span className="optional">Opcional</span></span><input value={form.description} onChange={event => set('description', event.target.value)} placeholder="Detalhes que ajudam a identificar o produto" maxLength={300}/></label>
             </div>
           </section>
           <section className="product-form-section"><div className="product-form-section-heading"><span>02</span><div><b>Preço e estoque</b><small>Valores de venda e controle de quantidade</small></div></div>
@@ -137,7 +137,7 @@ export default function ProductCatalogManager() {
           </section>
           <section className="product-form-section"><div className="product-form-section-heading"><span>03</span><div><b>Operação e disponibilidade</b><small>Destino do pedido e exibição no cardápio</small></div></div>
             <div className="product-form-grid"><label>Setor de preparo<select value={form.destination_sector} onChange={event => set('destination_sector', event.target.value)}>{sectors.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label>Imagem do produto <span className="optional">Opcional</span><div className="product-input-icon"><ImageIcon size={15}/><input type="url" value={form.image_url} onChange={event => set('image_url', event.target.value)} placeholder="https://..."/></div></label>
+              <label className="span-two"><span className="product-field-title">Imagem do produto <span className="optional">Opcional</span></span><div className="product-input-icon"><ImageIcon size={15}/><input type="url" value={form.image_url} onChange={event => set('image_url', event.target.value)} placeholder="Cole a URL da imagem do produto"/></div></label>
               <label className="product-active-toggle"><input type="checkbox" checked={form.active} onChange={event => set('active', event.target.checked)}/><span><b>Produto disponível</b><small>Exibir este item para venda</small></span></label>
             </div>
           </section>
