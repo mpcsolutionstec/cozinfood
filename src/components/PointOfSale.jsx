@@ -14,7 +14,10 @@ const paymentOptions = [
   { key: 'debit_card', log: 'debito', label: 'Débito', icon: CreditCard },
 ];
 const itemStatus = { pendente: 'Na fila', em_preparo: 'Em preparo', pronto: 'Pronto', entregue: 'Entregue', cancelado: 'Cancelado' };
-const publicImage = path => path && supabase ? supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl : '';
+const publicImage = product => {
+  if (product?.image_url?.trim()) return product.image_url.trim();
+  return product?.image_path && supabase ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '';
+};
 
 export default function PointOfSale() {
   const { profile } = useAuth();
@@ -74,7 +77,7 @@ export default function PointOfSale() {
     if (!supabase || !profile?.restaurant_id) return;
     const [categoryResult, productResult, additionResult, restaurantResult] = await Promise.all([
       supabase.from('categories').select('id,name,sort_order').eq('restaurant_id', profile.restaurant_id).eq('active', true).order('sort_order'),
-      supabase.from('products').select('id,name,description,base_price,prep_minutes,destination_sector,image_path,barcode,category_id,categories(name,slug),product_fractions(id,name,price,serves,active)')
+      supabase.from('products').select('id,name,description,base_price,prep_minutes,destination_sector,image_url,image_path,barcode,category_id,categories(name,slug),product_fractions(id,name,price,serves,active)')
         .eq('restaurant_id', profile.restaurant_id).eq('active', true).order('name'),
       supabase.from('product_additions').select('id,name,price').eq('restaurant_id', profile.restaurant_id).eq('active', true).order('name'),
       supabase.from('restaurants').select('fraction_pricing').eq('id', profile.restaurant_id).single(),
@@ -381,7 +384,7 @@ export default function PointOfSale() {
         <label className="pos-search"><span className="sr-only">Buscar produto por nome ou código de barras</span><Search size={19}/><input ref={searchRef} value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar produto ou ler código de barras · F2"/><Barcode size={19}/></label>
         <nav className="pos-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Todos</button>{categories.map(category => <button key={category.id} className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)}>{category.name}</button>)}</nav>
         {filteredProducts.length === 0 ? <div className="pos-empty">Nenhum produto encontrado.</div> : <div className="pos-product-grid">{filteredProducts.map(product => {
-          const image = publicImage(product.image_path);
+          const image = publicImage(product);
           const fractions = product.product_fractions || [];
           return <article className="pos-product" key={product.id}>
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-product-placeholder"><ChefHat size={23}/></span>}
@@ -398,7 +401,7 @@ export default function PointOfSale() {
         {mode === 'salao' && selectedTable && orderItems.length > 0 && <section className="pos-existing-items"><div className="pos-subheading"><b>Itens da comanda</b><small>{activeOrder ? `#${activeOrder.order_number}` : ''}</small></div>{orderItems.filter(item => item.status !== 'cancelado').map(item => <div className="pos-existing-item" key={item.id}><span className="pos-item-qty">{Number(item.quantity)}×</span><div className="pos-item-description"><b>{item.name}</b><small>{item.fraction_label || itemStatus[item.status] || item.status}</small></div><strong>{money(item.line_total)}</strong>{item.status === 'pendente' && <button className="pos-cancel-item" onClick={() => cancelOrderItem(item)} disabled={busy} aria-label={`Cancelar ${item.name}`} title={noticeItemId === item.id ? 'Clique novamente para confirmar' : 'Cancelar item'}>{noticeItemId === item.id ? <Check size={15}/> : <Trash2 size={15}/>}</button>}</div>)}</section>}
         {cart.length > 0 && <section className="pos-cart-items"><div className="pos-subheading"><b>{mode === 'salao' ? 'Novos itens' : 'Itens da venda'}</b><small>{itemCount}</small></div>{cart.map(item => {
           const price = Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price) + (item.additions || []).reduce((sum, addition) => sum + Number(addition.price || 0) * Number(addition.quantity || 1), 0);
-          const image = publicImage(item.product.image_path);
+          const image = publicImage(item.product);
           return <article className="pos-cart-line" key={item.key}>
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-cart-placeholder"><ShoppingCart size={15}/></span>}
             <div className="pos-cart-line-main"><b>{item.flavors?.length > 1 ? `Pizza · ${item.flavors.length} sabores` : item.product.name}</b>{item.fraction && <small>{item.fraction.name}</small>}{item.flavors?.length > 1 && <small>{item.flavors.map(flavor => `${Math.round(flavor.share * 100)}% ${flavor.product.name}`).join(' · ')}</small>}{item.additions?.length > 0 && <small>Adicionais: {item.additions.map(addition => addition.name).join(', ')}</small>}<input value={item.notes} onChange={event => setNote(item.key, event.target.value)} placeholder="Observação (opcional)" aria-label={`Observação para ${item.product.name}`}/><div className="pos-quantity"><button onClick={() => setQuantity(item.key, item.quantity - 1)} aria-label="Diminuir quantidade"><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => setQuantity(item.key, item.quantity + 1)} aria-label="Aumentar quantidade"><Plus size={14}/></button></div></div>
