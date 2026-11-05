@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Armchair, Check, Pencil, Plus, QrCode, ShoppingBasket, Trash2, Users, X } from 'lucide-react';
+import { Armchair, Check, Combine, Pencil, Plus, QrCode, ShoppingBasket, Trash2, Users, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
@@ -25,6 +25,7 @@ const emptyForm = { number: '', capacity: 4, status: 'livre', image_key: 'square
 export default function TablesManager({ tables, loading, loadError, refresh }) {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const canManageTables = ['admin', 'garcom'].includes(profile?.role);
   const [dialog, setDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -36,6 +37,11 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
   const [copiedQr, setCopiedQr] = useState(false);
   const [confirmTable, setConfirmTable] = useState(null);
   const [deletingTable, setDeletingTable] = useState(false);
+  const [bulkAction, setBulkAction] = useState('');
+  const [sourceTableId, setSourceTableId] = useState('');
+  const [targetTableId, setTargetTableId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState('');
 
   const counts = useMemo(() => ({
     livre: tables.filter(table => table.status === 'livre').length,
@@ -141,10 +147,48 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     }
   };
 
+  const openBulkAction = action => {
+    const occupied = tables.filter(table => table.status === 'ocupada' || table.status === 'aguardando_conta');
+    setSourceTableId(occupied[0]?.id || '');
+    setTargetTableId('');
+    setBulkError('');
+    setBulkAction(action);
+  };
+
+  const submitBulkAction = async event => {
+    event.preventDefault();
+    if (!sourceTableId || !targetTableId || sourceTableId === targetTableId) {
+      setBulkError('Selecione duas mesas diferentes.');
+      return;
+    }
+    setBulkBusy(true);
+    setBulkError('');
+    try {
+      const { error: actionError } = await supabase.rpc('manage_table_bulk_action', {
+        p_action: bulkAction,
+        p_source_table: sourceTableId,
+        p_target_table: targetTableId,
+      });
+      if (actionError) throw actionError;
+    } catch (actionError) {
+      setBulkError(actionError.message || 'Não foi possível concluir a ação.');
+      setBulkBusy(false);
+      return;
+    }
+    const source = tables.find(table => table.id === sourceTableId);
+    const target = tables.find(table => table.id === targetTableId);
+    await refresh();
+    setBulkBusy(false);
+    setBulkAction('');
+    setNotice(bulkAction === 'transferir'
+      ? `Comanda transferida da Mesa ${source?.number} para a Mesa ${target?.number}.`
+      : `Mesas ${source?.number} e ${target?.number} unificadas na Mesa ${target?.number}.`);
+  };
+
   return <>
     <div className="page-heading tables-heading">
       <div><h1>Salão e mesas</h1><p>Cadastre o salão e acompanhe a situação das mesas em tempo real.</p></div>
-      {isAdmin && <button className="primary" onClick={openNew}><Plus size={15}/> Nova mesa</button>}
+      <div className="tables-heading-actions">{canManageTables && <><button className="table-bulk-action" onClick={() => openBulkAction('transferir')}><Combine size={15}/> Transferir mesa</button><button className="table-bulk-action" onClick={() => openBulkAction('juntar')}><Combine size={15}/> Juntar mesas</button></>}{isAdmin && <button className="primary" onClick={openNew}><Plus size={15}/> Nova mesa</button>}</div>
     </div>
 
     <div className="table-status-summary">
@@ -177,6 +221,7 @@ export default function TablesManager({ tables, loading, loadError, refresh }) {
     </div>}
 
     {serviceTable && <TableService table={serviceTable} profile={profile} onClose={() => setServiceTable(null)} onChanged={refresh}/>}
+    {bulkAction && <div className="table-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !bulkBusy) setBulkAction(''); }}><section className="table-modal table-bulk-modal" role="dialog" aria-modal="true" aria-labelledby="table-bulk-title"><header><div><span className="table-modal-icon"><Combine size={18}/></span><div><h2 id="table-bulk-title">{bulkAction === 'transferir' ? 'Transferir comanda' : 'Juntar mesas'}</h2><p>{bulkAction === 'transferir' ? 'Mova os itens e a comanda para outra mesa livre.' : 'Una os itens da mesa de origem à comanda da mesa de destino.'}</p></div></div><button className="table-modal-close" onClick={() => setBulkAction('')} aria-label="Fechar" disabled={bulkBusy}><X size={19}/></button></header><form onSubmit={submitBulkAction}><div className="table-form-fields"><label>Mesa de origem<select value={sourceTableId} onChange={event => setSourceTableId(event.target.value)} required><option value="">Selecione</option>{tables.filter(table => table.status === 'ocupada' || table.status === 'aguardando_conta').map(table => <option key={table.id} value={table.id}>Mesa {table.number} · {money(table.current_total)}</option>)}</select></label><label>Mesa de destino<select value={targetTableId} onChange={event => setTargetTableId(event.target.value)} required><option value="">Selecione</option>{tables.filter(table => table.id !== sourceTableId && table.status !== 'reservada' && (bulkAction === 'juntar' || table.status === 'livre')).map(table => <option key={table.id} value={table.id}>Mesa {table.number} · {table.status === 'livre' ? 'Livre' : money(table.current_total)}</option>)}</select></label></div>{bulkError && <div className="table-form-error" role="alert">{bulkError}</div>}<footer><button type="button" className="table-cancel-button" onClick={() => setBulkAction('')} disabled={bulkBusy}>Cancelar</button><button className="primary" disabled={bulkBusy || !sourceTableId || !targetTableId}>{bulkBusy ? 'Processando…' : bulkAction === 'transferir' ? 'Transferir comanda' : 'Juntar mesas'}</button></footer></form></section></div>}
     <ConfirmDialog open={Boolean(confirmTable)} title={`Excluir mesa ${confirmTable?.number || ''}?`} description="Pedidos antigos deixarão de apontar para esta mesa. Esta ação não pode ser desfeita." confirmLabel="Excluir mesa" busy={deletingTable} onConfirm={confirmDeleteTable} onClose={() => { if (!deletingTable) setConfirmTable(null); }}/>
     {qrTable && <div className="table-modal-backdrop qr-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setQrTable(null); }}><section className="table-modal table-qr-modal" role="dialog" aria-modal="true" aria-labelledby="table-qr-title"><header><div><span className="table-modal-icon"><QrCode size={18}/></span><div><h2 id="table-qr-title">QR Code · Mesa {qrTable.number}</h2><p>Cliente abre o cardápio e envia o pedido direto para a mesa.</p></div></div><button className="table-modal-close" onClick={() => setQrTable(null)} aria-label="Fechar"><X size={19}/></button></header><div className="table-qr-content"><div className="table-qr-code"><QRCodeSVG value={qrMenuUrl(qrTable)} size={210} level="H" includeMargin/></div><label>Endereço do cardápio<input readOnly value={qrMenuUrl(qrTable)} onFocus={event => event.target.select()}/></label><div className="table-qr-actions"><button className="table-cancel-button" onClick={() => window.print()}>Imprimir QR Code</button><button className="primary" onClick={() => copyQrLink(qrTable)}>{copiedQr ? <><Check size={14}/> Link copiado</> : 'Copiar link'}</button></div></div></section></div>}
     {dialog && <div className="table-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setDialog(false); }}>

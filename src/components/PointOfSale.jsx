@@ -51,6 +51,9 @@ export default function PointOfSale() {
   const [closingAmount, setClosingAmount] = useState('');
   const [expectedCash, setExpectedCash] = useState(0);
   const [paymentRows, setPaymentRows] = useState([]);
+  const cashChange = paymentRows.reduce((sum, row) => row.method === 'cash'
+    ? sum + Math.max(0, Number(row.cash_received || 0) - Number(row.amount || 0))
+    : sum, 0);
   const [pix, setPix] = useState(null);
   const [pixStatus, setPixStatus] = useState('');
   const [copyDone, setCopyDone] = useState(false);
@@ -440,6 +443,7 @@ export default function PointOfSale() {
           <div className="pos-payment-rows">{paymentRows.map((row,index) => <div className="pos-payment-row" key={index}><label>Forma<select value={row.method} onChange={event => updatePaymentRow(index,'method',event.target.value)}>{paymentOptions.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><label>Valor<input type="number" min="0.01" step="0.01" value={row.amount} onChange={event => updatePaymentRow(index,'amount',event.target.value)} required/></label>{row.method === 'cash' && <label>Recebido<input type="number" min={row.amount || '0'} step="0.01" value={row.cash_received} onChange={event => updatePaymentRow(index,'cash_received',event.target.value)} required/></label>}{paymentRows.length > 1 && <button type="button" className="pos-remove-payment" onClick={() => removePaymentRow(index)} aria-label="Remover forma de pagamento"><Trash2 size={16}/></button>}</div>)}</div>
           <div className="pos-payment-actions"><button type="button" className="pos-add-payment" onClick={addPaymentRow}><Plus size={15}/> Adicionar pagamento misto</button><button type="button" className="pos-add-payment pix" onClick={createPix} disabled={busy}><QrCode size={16}/> Gerar Pix dinâmico</button></div>
           <div className="pos-payment-sum"><span>Soma informada</span><b>{money(paymentRows.reduce((sum,row) => sum + Number(row.amount || 0),0))}</b></div>
+          {paymentRows.some(row => row.method === 'cash') && <div className="pos-payment-sum pos-payment-change" role="status"><span>Troco</span><b>{money(cashChange)}</b></div>}
           </>}
         {error && <p className="pos-modal-error">{error}</p>}
         {pix ? <button className="pos-secondary" type="button" onClick={() => { setPix(null); setPixStatus(''); }}>Voltar aos pagamentos</button> : <button className="pos-primary" disabled={busy || !register}>{busy ? 'Processando…' : 'Confirmar pagamento'}</button>}
