@@ -12,7 +12,7 @@ create table public.restaurants(id uuid primary key default gen_random_uuid(),na
 create table public.profiles(id uuid primary key references auth.users(id) on delete cascade,restaurant_id uuid not null references public.restaurants(id) on delete cascade,full_name text not null,role public.app_role not null default 'garcom',phone text,active boolean not null default true,created_at timestamptz not null default now());
 create table public.tables(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,number integer not null,status public.table_status not null default 'livre',qr_token text not null unique default encode(gen_random_bytes(24),'hex'),current_total numeric(12,2) not null default 0 check(current_total>=0),capacity integer not null default 4,image_key text not null default 'round_2' check(image_key in ('round_2','square_4','rectangle_6','rectangle_8')),created_at timestamptz not null default now(),unique(restaurant_id,number));
 create table public.categories(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,name text not null,slug text not null,sort_order int not null default 0,active boolean not null default true,created_at timestamptz not null default now(),unique(restaurant_id,slug));
-create table public.products(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,category_id uuid references public.categories(id) on delete set null,name text not null,description text,base_price numeric(12,2) not null check(base_price>=0),accepts_fractions boolean not null default false,prep_minutes int not null default 15 check(prep_minutes>=0),destination_sector text not null default 'cozinha' check(destination_sector in ('cozinha','bar','forno_pizza')),image_path text,active boolean not null default true,created_at timestamptz not null default now());
+create table public.products(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,category_id uuid references public.categories(id) on delete set null,name text not null,description text,base_price numeric(12,2) not null check(base_price>=0),accepts_fractions boolean not null default false,prep_minutes int not null default 15 check(prep_minutes>=0),destination_sector text not null default 'cozinha' check(destination_sector in ('cozinha','bar','forno_pizza')),image_path text,image_url text,active boolean not null default true,created_at timestamptz not null default now());
 create table public.product_fractions(id uuid primary key default gen_random_uuid(),product_id uuid not null references public.products(id) on delete cascade,name text not null,serves int not null check(serves between 1 and 4),price numeric(12,2) not null check(price>=0),active boolean not null default true,unique(product_id,name));
 create table public.pizza_borders(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,name text not null,price numeric(12,2) not null default 0 check(price>=0),active boolean not null default true,unique(restaurant_id,name));
 create table public.ingredients_stock(id uuid primary key default gen_random_uuid(),restaurant_id uuid not null references public.restaurants(id) on delete cascade,name text not null,unit text not null check(unit in ('g','kg','ml','l','un')),quantity numeric(14,3) not null default 0,minimum_quantity numeric(14,3) not null default 0,cost_per_unit numeric(12,4) not null default 0,updated_at timestamptz not null default now(),unique(restaurant_id,name));
@@ -416,6 +416,7 @@ begin
                 'name', p.name,
                 'description', p.description,
                 'base_price', p.base_price,
+                'image_url', p.image_url,
                 'image_path', p.image_path,
                 'accepts_fractions', p.accepts_fractions,
                 'destination_sector', p.destination_sector,
@@ -713,6 +714,7 @@ begin
             'name', p.name,
             'description', p.description,
             'base_price', p.base_price,
+            'image_url', p.image_url,
             'image_path', p.image_path,
             'accepts_fractions', p.accepts_fractions,
             'destination_sector', p.destination_sector,

@@ -3,7 +3,10 @@ import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, Minus, PackageC
 import { supabase } from '../lib/supabaseClient';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const productImageUrl = imagePath => imagePath ? supabase.storage.from('product-images').getPublicUrl(imagePath).data.publicUrl : '';
+const productImageUrl = product => {
+  if (product?.image_url?.trim()) return product.image_url.trim();
+  return product?.image_path && supabase ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '';
+};
 const orderStatusLabel = { pendente: 'Recebido pelo restaurante', em_preparo: 'Em preparo', pronto: 'Pronto para servir', entregue: 'Finalizado', cancelado: 'Cancelado' };
 const orderStatusMeta = {
   pendente: { label: orderStatusLabel.pendente, tone: 'pending', icon: Clock3 },
@@ -162,7 +165,7 @@ export default function PublicTableOrder({ qrToken }) {
           <button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button>
         </section>;
       })()}
-      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product.image_path) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
+      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
         <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">
             <div><span className="qr-cart-title"><ShoppingCart size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
@@ -171,7 +174,7 @@ export default function PublicTableOrder({ qrToken }) {
           <div className="qr-cart-items">
             {cart.length ? cart.map(item => {
               const unitPrice = Number(item.fraction?.price ?? item.product.base_price);
-              const imageUrl = productImageUrl(item.product.image_path);
+              const imageUrl = productImageUrl(item.product);
               return <article className="qr-cart-item" key={item.key}>
                 {imageUrl ? <img className="qr-cart-photo" src={imageUrl} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> : <span className="qr-cart-item-photo-placeholder"><ShoppingCart size={18}/></span>}
                 <div className="qr-cart-item-content">
