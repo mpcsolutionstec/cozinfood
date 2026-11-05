@@ -151,7 +151,12 @@ export default function PublicTableOrder({ qrToken }) {
       <section className="qr-welcome"><span>SEJA BEM-VINDO</span><h1>Faça seu pedido à mesa</h1><p>Escolha os itens. A equipe recebe seu pedido na hora.</p></section>
       {error && <div className="qr-inline-error" role="alert">{error}</div>}
       {receipt && (() => {
-        const current = orderStatusMeta[liveStatus?.status] || { label: 'Aguardando confirmação da cozinha', tone: 'pending', icon: Clock3 };
+        const unfinishedItems = (liveStatus?.items || []).filter(item => !['entregue', 'cancelado'].includes(item.status));
+        const progressStatus = liveStatus?.status === 'entregue' && unfinishedItems.length
+          ? unfinishedItems.some(item => item.status === 'pendente') ? 'pendente'
+            : unfinishedItems.some(item => item.status === 'em_preparo') ? 'em_preparo' : 'pronto'
+          : liveStatus?.status;
+        const current = orderStatusMeta[progressStatus] || { label: 'Aguardando confirmação da cozinha', tone: 'pending', icon: Clock3 };
         const CurrentIcon = current.icon;
         return <section className={`qr-receipt status-${current.tone}`} aria-live="polite">
           <div className="qr-receipt-heading"><span className="qr-receipt-success-icon"><CheckCircle2 size={22}/></span><div><b>Pedido #{receipt.order_number} enviado</b><span>Mesa {menu.table_number} · Acompanhe o preparo abaixo</span></div></div>
