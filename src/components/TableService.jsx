@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChefHat, Copy, CreditCard, Minus, Plus, QrCode, ReceiptText, RefreshCw, Send, ShoppingBag, X } from 'lucide-react';
+import { Check, ChefHat, Copy, CreditCard, QrCode, ReceiptText, RefreshCw, Send, ShoppingBag, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { QRCodeSVG } from 'qrcode.react';
+import QuantityControl from './QuantityControl';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const splitAmount = (total, count, index) => {
@@ -117,15 +118,21 @@ export default function TableService({ table, profile, onClose, onChanged }) {
   }, 0), [activeOrder, selectedSplitItems]);
   const splitRemainder = Math.max(0, Math.round((Number(activeOrder?.total || 0) - selectedSplitTotal) * 100) / 100);
 
-  const addProduct = (product, fraction = null) => {
-    const key = `${product.id}:${fraction?.id || 'base'}`;
+  const itemKey = (product, fraction = null) => `${product.id}:${fraction?.id || 'base'}`;
+  const quantityFor = (product, fraction = null) => cart.find(item => item.key === itemKey(product, fraction))?.quantity || 0;
+  const setItemQuantity = (product, fraction, quantity) => {
+    const key = itemKey(product, fraction);
     setCart(items => {
-      const existing = items.find(item => item.key === key);
-      if (existing) return items.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...items, { key, product, fraction, quantity: 1, notes: '' }];
+      const existing = items.some(item => item.key === key);
+      if (quantity <= 0) return items.filter(item => item.key !== key);
+      return existing
+        ? items.map(item => item.key === key ? { ...item, quantity } : item)
+        : [...items, { key, product, fraction, quantity, notes: '' }];
     });
   };
-  const changeQuantity = (key, amount) => setCart(items => items.map(item => item.key === key ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item).filter(item => item.quantity > 0));
+  const changeQuantity = (key, quantity) => setCart(items => quantity <= 0
+    ? items.filter(item => item.key !== key)
+    : items.map(item => item.key === key ? { ...item, quantity } : item));
   const changeNote = (key, notes) => setCart(items => items.map(item => item.key === key ? { ...item, notes } : item));
 
   const sendDraft = useCallback(async draft => {
@@ -276,11 +283,11 @@ export default function TableService({ table, profile, onClose, onChanged }) {
       {loading ? <div className="service-loading"><RefreshCw size={17}/> Carregando cardápio...</div> : <div className="service-layout">
         <section className="service-menu">
           <div className="service-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{categories.map(category => <button key={category.id} className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)}>{category.name}</button>)}</div>
-          <div className="service-products">{visibleProducts.map(product => <article className="service-product" key={product.id}>{productImageUrl(product) ? <img className="service-product-photo" src={productImageUrl(product)} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="service-product-photo-placeholder"><ChefHat size={18}/></span>}<div className="service-product-details"><b>{product.name}</b><p>{product.description || product.categories?.name || 'Item do cardápio'}</p></div>{product.product_fractions?.filter(fraction => fraction.active).length > 0 ? <div className="service-variants">{product.product_fractions.filter(fraction => fraction.active).map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="service-add" onClick={() => addProduct(product)}><span>{money(product.base_price)}</span><Plus size={16}/></button>}</article>)}{visibleProducts.length === 0 && <div className="service-empty">Nenhum produto ativo nesta categoria.</div>}</div>
+          <div className="service-products">{visibleProducts.map(product => <article className="service-product" key={product.id}>{productImageUrl(product) ? <img className="service-product-photo" src={productImageUrl(product)} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="service-product-photo-placeholder"><ChefHat size={18}/></span>}<div className="service-product-details"><b>{product.name}</b><p>{product.description || product.categories?.name || 'Item do cardápio'}</p></div>{product.product_fractions?.filter(fraction => fraction.active).length > 0 ? <div className="service-variants">{product.product_fractions.filter(fraction => fraction.active).map(fraction => <div className="service-variant-option" key={fraction.id}><span>{fraction.name}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="service-add"><span>{money(product.base_price)}</span><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>)}{visibleProducts.length === 0 && <div className="service-empty">Nenhum produto ativo nesta categoria.</div>}</div>
         </section>
         <aside className="service-cart"><div className="service-cart-heading"><div><h3><ShoppingBag size={16}/> Novo pedido</h3><span>{cart.length} produto(s)</span></div><b>{money(cartTotal)}</b></div>
           {activeOrder && <div className="service-open-order"><div><ReceiptText size={15}/><b>Comanda aberta · #{activeOrder.order_number}</b></div>{activeOrder.order_items?.map(item => <div className="service-existing-item" key={item.id}><span>{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}</span><span>{money(item.line_total)}</span></div>)}<div className="service-existing-total"><span>Acumulado</span><b>{money(activeOrder.total)}</b></div></div>}
-          <div className="service-cart-items">{cart.map(item => <article className="service-cart-item" key={item.key}>{productImageUrl(item.product) ? <img className="service-cart-photo" src={productImageUrl(item.product)} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="service-cart-photo-placeholder"><ChefHat size={14}/></span>}<div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><small>{money(item.fraction?.price ?? item.product.base_price)} cada</small><input value={item.notes} onChange={event => changeNote(item.key, event.target.value)} placeholder="Observação (opcional)" maxLength={300}/></div><div className="service-quantity"><button onClick={() => changeQuantity(item.key, -1)} aria-label="Diminuir"><Minus size={13}/></button><b>{item.quantity}</b><button onClick={() => changeQuantity(item.key, 1)} aria-label="Aumentar"><Plus size={13}/></button></div></article>)}{cart.length === 0 && <div className="service-cart-empty">Toque em um item para adicioná-lo ao pedido.</div>}</div>
+          <div className="service-cart-items">{cart.map(item => <article className="service-cart-item" key={item.key}>{productImageUrl(item.product) ? <img className="service-cart-photo" src={productImageUrl(item.product)} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="service-cart-photo-placeholder"><ChefHat size={14}/></span>}<div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><small>{money(item.fraction?.price ?? item.product.base_price)} cada</small><input value={item.notes} onChange={event => changeNote(item.key, event.target.value)} placeholder="Observação (opcional)" maxLength={300}/></div><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => changeQuantity(item.key, quantity)}/></article>)}{cart.length === 0 && <div className="service-cart-empty">Toque em um item para adicioná-lo ao pedido.</div>}</div>
           <form onSubmit={submitOrder} className="service-submit-form"><label>Observação do pedido<input value={orderNote} onChange={event => setOrderNote(event.target.value)} placeholder="Ex.: enviar primeiro as bebidas" maxLength={1000}/></label><button className="primary" disabled={sending || cart.length === 0}><Send size={15}/>{sending ? 'Enviando...' : activeOrder ? 'Adicionar à comanda' : 'Enviar para preparo'}</button>{activeOrder && <div className="service-bottom-actions"><button type="button" onClick={requestBill} disabled={sending}>Pedir conta</button><button type="button" className="service-split-action" onClick={() => { setSplitOpen(true); setSplitError(''); }} disabled={sending}><CreditCard size={14}/>Dividir conta / Pix</button><button type="button" onClick={closeOrder} disabled={sending}>Finalizar comanda</button></div>}</form>
         </aside>
       </div>}

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Barcode, Banknote, Check, ChefHat, CircleDollarSign, Clock3, CreditCard, Minus, Plus, QrCode, Search, ShoppingCart, Trash2, Utensils, Wallet, X } from 'lucide-react';
+import { Barcode, Banknote, Check, ChefHat, CircleDollarSign, Clock3, CreditCard, Plus, QrCode, Search, ShoppingCart, Trash2, Utensils, Wallet, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from './AuthGate';
 import { useTableStatus } from '../hooks/useTableStatus';
 import { supabase } from '../lib/supabaseClient';
 import { closePosCashRegister, createPosPix, finalizePosOrder, openPosCashRegister, savePosOrder } from '../services/posService';
 import { usePosStore } from '../stores/usePosStore';
+import QuantityControl from './QuantityControl';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const paymentOptions = [
@@ -30,6 +31,7 @@ export default function PointOfSale() {
   const setSelectedTable = usePosStore(state => state.setSelectedTable);
   const setActiveOrder = usePosStore(state => state.setActiveOrder);
   const addItem = usePosStore(state => state.addItem);
+  const setProductQuantity = usePosStore(state => state.setProductQuantity);
   const setQuantity = usePosStore(state => state.setQuantity);
   const setNote = usePosStore(state => state.setNote);
   const removeItem = usePosStore(state => state.removeItem);
@@ -314,8 +316,9 @@ export default function PointOfSale() {
     setBusy(false);
   };
 
-  const addProduct = (product, fraction = null, additions = []) => {
-    addItem(product, fraction, additions);
+  const catalogQuantity = (product, fraction = null) => cart.find(item => item.key === `${product.id}:${fraction?.id || 'base'}::`)?.quantity || 0;
+  const setCatalogQuantity = (product, fraction, quantity) => {
+    setProductQuantity(product, fraction, quantity);
     setError('');
   };
 
@@ -392,7 +395,7 @@ export default function PointOfSale() {
           return <article className="pos-product" key={product.id}>
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-product-placeholder"><ChefHat size={23}/></span>}
             <div className="pos-product-info"><span>{product.categories?.name || 'Cardápio'}</span><b>{product.name}</b>{product.description && <small>{product.description}</small>}</div>
-            {fractions.length ? <div className="pos-product-fractions">{fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}</span><b>{money(fraction.price)}<Plus size={14}/></b></button>)}</div> : <button className="pos-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={17}/></span></button>}
+            {fractions.length ? <div className="pos-product-fractions">{fractions.map(fraction => <div className="pos-product-fraction-option" key={fraction.id}><span>{fraction.name}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={catalogQuantity(product, fraction)} onChange={quantity => setCatalogQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="pos-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={catalogQuantity(product)} onChange={quantity => setCatalogQuantity(product, null, quantity)}/></div>}
             {(availableAdditions.length > 0 || product.categories?.slug === 'pizzas') && <button className="pos-customize-product" onClick={() => customizeProduct(product)}><Plus size={13}/> {product.categories?.slug === 'pizzas' ? 'Montar pizza / adicionais' : 'Personalizar / adicionais'}</button>}
           </article>;
         })}</div>}
@@ -407,7 +410,7 @@ export default function PointOfSale() {
           const image = publicImage(item.product);
           return <article className="pos-cart-line" key={item.key}>
             {image ? <img src={image} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="pos-cart-placeholder"><ShoppingCart size={15}/></span>}
-            <div className="pos-cart-line-main"><b>{item.flavors?.length > 1 ? `Pizza · ${item.flavors.length} sabores` : item.product.name}</b>{item.fraction && <small>{item.fraction.name}</small>}{item.flavors?.length > 1 && <small>{item.flavors.map(flavor => `${Math.round(flavor.share * 100)}% ${flavor.product.name}`).join(' · ')}</small>}{item.additions?.length > 0 && <small>Adicionais: {item.additions.map(addition => addition.name).join(', ')}</small>}<input value={item.notes} onChange={event => setNote(item.key, event.target.value)} placeholder="Observação (opcional)" aria-label={`Observação para ${item.product.name}`}/><div className="pos-quantity"><button onClick={() => setQuantity(item.key, item.quantity - 1)} aria-label="Diminuir quantidade"><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => setQuantity(item.key, item.quantity + 1)} aria-label="Aumentar quantidade"><Plus size={14}/></button></div></div>
+            <div className="pos-cart-line-main"><b>{item.flavors?.length > 1 ? `Pizza · ${item.flavors.length} sabores` : item.product.name}</b>{item.fraction && <small>{item.fraction.name}</small>}{item.flavors?.length > 1 && <small>{item.flavors.map(flavor => `${Math.round(flavor.share * 100)}% ${flavor.product.name}`).join(' · ')}</small>}{item.additions?.length > 0 && <small>Adicionais: {item.additions.map(addition => addition.name).join(', ')}</small>}<input value={item.notes} onChange={event => setNote(item.key, event.target.value)} placeholder="Observação (opcional)" aria-label={`Observação para ${item.product.name}`}/><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => setQuantity(item.key, quantity)}/></div>
             <div className="pos-cart-line-total"><b>{money(price * item.quantity)}</b><small>{money(price)} cada</small><button onClick={() => removeItem(item.key)} aria-label="Remover do carrinho"><Trash2 size={15}/></button></div>
           </article>;
         })}</section>}

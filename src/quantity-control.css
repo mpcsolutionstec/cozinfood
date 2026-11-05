@@ -1,0 +1,224 @@
+.quantity-control {
+  display: inline-flex;
+  min-width: 94px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #e4e8ed;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.quantity-control button {
+  display: grid;
+  width: 27px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: #f5f6f8;
+  color: #48576b;
+  font: 700 17px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.quantity-control button:last-child {
+  background: #fff0e8;
+  color: #c65b34;
+}
+
+.quantity-control input {
+  width: 30px;
+  min-width: 20px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #29384c;
+  font: 700 12px Manrope, sans-serif;
+  text-align: center;
+}
+
+.quantity-control input:focus-visible {
+  outline: 1px solid #e17a52;
+  border-radius: 4px;
+}
+
+.quantity-control.compact {
+  min-width: 82px;
+  height: 29px;
+  border-radius: 7px;
+}
+
+.quantity-control.compact button {
+  width: 23px;
+  height: 23px;
+  font-size: 15px;
+}
+
+.quantity-control.compact input {
+  width: 25px;
+  height: 23px;
+  font-size: 10px;
+}
+
+.digital-public .quantity-control {
+  border-color: #e5e9df;
+}
+
+.digital-public .quantity-control button:last-child {
+  background: #edf4e8;
+  color: #50754a;
+}
+
+.digital-size-options {
+  grid-template-columns: 1fr;
+}
+
+.digital-size-option {
+  display: flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 5px 3px 8px;
+  border: 1px solid #ecebe4;
+  border-radius: 7px;
+  background: #fff;
+  color: #657164;
+  font-size: 9px;
+}
+
+.digital-size-option > span,
+.service-variant-option > span,
+.pos-product-fraction-option > span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.digital-size-option > b {
+  color: #4d7753;
+  white-space: nowrap;
+}
+
+.digital-add-product,
+.service-add,
+.pos-product-add,
+.qr-product-add {
+  display: flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  cursor: default;
+}
+
+.digital-add-product {
+  height: auto;
+}
+
+.service-variant-option,
+.pos-product-fraction-option,
+.qr-product-fraction-option {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 5px 4px 8px;
+  border: 1px solid #f0ddd4;
+  border-radius: 7px;
+  background: #fffaf7;
+  color: #705d52;
+  font: 600 9px 'DM Sans', sans-serif;
+}
+
+.service-variant-option > b,
+.pos-product-fraction-option > b,
+.qr-product-fraction-option > b {
+  color: #c75b31;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.service-variants {
+  width: auto;
+}
+
+.service-add {
+  width: 100%;
+  padding: 3px 5px 3px 10px;
+}
+
+.pos-product-fractions {
+  gap: 5px;
+}
+
+.pos-product-add {
+  padding: 3px 5px 3px 10px;
+}
+
+.qr-product-fraction-option {
+  min-height: 38px;
+}
+
+.qr-product-fractions {
+  gap: 6px;
+}
+
+.pos-cart-line-main > .quantity-control {
+  margin-top: 2px;
+}
+
+@media (max-width: 680px) {
+  .service-variant-option,
+  .pos-product-fraction-option,
+  .qr-product-fraction-option,
+  .digital-size-option {
+    gap: 4px;
+    padding-left: 6px;
+  }
+  .service-variant-option .quantity-control,
+  .pos-product-fraction-option .quantity-control,
+  .qr-product-fraction-option .quantity-control,
+  .digital-size-option .quantity-control {
+    min-width: 74px;
+  }
+  .service-variant-option .quantity-control button,
+  .pos-product-fraction-option .quantity-control button,
+  .qr-product-fraction-option .quantity-control button,
+  .digital-size-option .quantity-control button {
+    width: 20px;
+  }
+}
+
+.service-panel .quantity-control {
+  border-color: #eeded5;
+}
+
+.service-panel .quantity-control button:last-child {
+  background: #fff0e8;
+}
+
+.pos-page .quantity-control {
+  border-color: #efd9ce;
+}
+
+.pos-page .quantity-control button:last-child {
+  background: #f06c3b;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .quantity-control {
+    min-width: 88px;
+  }
+  .quantity-control button {
+    width: 24px;
+  }
+}

@@ -17,6 +17,14 @@ export const usePosStore = create(persist((set, get) => ({
     if (current) return { cart: state.cart.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item) };
     return { cart: [...state.cart, { key, product, fraction, additions, flavors, unitPrice, quantity: 1, notes: '' }] };
   }),
+  setProductQuantity: (product, fraction, quantity) => set(state => {
+    const key = `${product.id}:${fraction?.id || 'base'}::`;
+    const amount = Math.min(99, Math.max(0, Number(quantity) || 0));
+    const existing = state.cart.some(item => item.key === key);
+    if (amount === 0) return { cart: state.cart.filter(item => item.key !== key) };
+    if (existing) return { cart: state.cart.map(item => item.key === key ? { ...item, quantity: amount } : item) };
+    return { cart: [...state.cart, { key, product, fraction, additions: [], flavors: [], unitPrice: null, quantity: amount, notes: '' }] };
+  }),
   setQuantity: (key, quantity) => set(state => ({ cart: state.cart
     .map(item => item.key === key ? { ...item, quantity: Math.max(0, Number(quantity) || 0) } : item)
     .filter(item => item.quantity > 0) })),

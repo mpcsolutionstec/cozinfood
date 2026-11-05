@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, Minus, PackageCheck, Plus, Send, ShoppingCart, Trash2, Utensils, XCircle } from 'lucide-react';
+import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import QuantityControl from './QuantityControl';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const productImageUrl = product => {
@@ -111,15 +112,21 @@ export default function PublicTableOrder({ qrToken }) {
     return () => observer.disconnect();
   }, [menu, cartCount]);
 
-  const addProduct = (product, fraction = null) => {
-    const key = `${product.id}:${fraction?.id || 'base'}`;
+  const itemKey = (product, fraction = null) => `${product.id}:${fraction?.id || 'base'}`;
+  const quantityFor = (product, fraction = null) => cart.find(item => item.key === itemKey(product, fraction))?.quantity || 0;
+  const setItemQuantity = (product, fraction, quantity) => {
+    const key = itemKey(product, fraction);
     setCart(items => {
-      const existing = items.find(item => item.key === key);
-      if (existing) return items.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...items, { key, product, fraction, quantity: 1, notes: '' }];
+      const existing = items.some(item => item.key === key);
+      if (quantity <= 0) return items.filter(item => item.key !== key);
+      return existing
+        ? items.map(item => item.key === key ? { ...item, quantity } : item)
+        : [...items, { key, product, fraction, quantity, notes: '' }];
     });
   };
-  const changeQuantity = (key, amount) => setCart(items => items.map(item => item.key === key ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item).filter(item => item.quantity > 0));
+  const changeQuantity = (key, quantity) => setCart(items => quantity <= 0
+    ? items.filter(item => item.key !== key)
+    : items.map(item => item.key === key ? { ...item, quantity } : item));
   const removeItem = key => setCart(items => items.filter(item => item.key !== key));
   const changeNote = (key, notes) => setCart(items => items.map(item => item.key === key ? { ...item, notes } : item));
 
@@ -170,7 +177,7 @@ export default function PublicTableOrder({ qrToken }) {
           <button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button>
         </section>;
       })()}
-      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <button key={fraction.id} onClick={() => addProduct(product, fraction)}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)} <Plus size={13}/></b></button>)}</div> : <button className="qr-product-add" onClick={() => addProduct(product)}><b>{money(product.base_price)}</b><span><Plus size={16}/></span></button>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
+      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <div className="qr-product-fraction-option" key={fraction.id}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="qr-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
         <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">
             <div><span className="qr-cart-title"><ShoppingCart size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
@@ -187,7 +194,7 @@ export default function PublicTableOrder({ qrToken }) {
                   {item.fraction && <span className="qr-cart-item-variant">Tamanho &middot; {item.fraction.name}</span>}
                   <div className="qr-cart-item-pricing"><span>{money(unitPrice)} <small>cada</small></span><strong>{money(unitPrice * item.quantity)}</strong></div>
                   <div className="qr-cart-item-bottom">
-                    <div className="qr-quantity"><button type="button" onClick={() => changeQuantity(item.key, -1)} aria-label="Diminuir quantidade"><Minus size={14}/></button><b>{item.quantity}</b><button type="button" onClick={() => changeQuantity(item.key, 1)} aria-label="Aumentar quantidade"><Plus size={14}/></button></div>
+                    <QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => changeQuantity(item.key, quantity)}/>
                     <label className="qr-cart-item-note"><span>Observa&ccedil;&atilde;o deste item</span><input value={item.notes} onChange={event => changeNote(item.key, event.target.value)} placeholder="Ex.: sem cebola" maxLength={300}/></label>
                   </div>
                 </div>
