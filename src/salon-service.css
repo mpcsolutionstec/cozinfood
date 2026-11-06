@@ -454,12 +454,13 @@
   cursor: pointer;
 }
 
-.service-bottom-actions button:last-child {
+.service-bottom-actions button:last-child:not(.service-split-action) {
   border-color: #f0d1c3;
   color: #ba5732;
 }
 
 .service-bottom-actions .service-split-action { display: inline-flex; align-items: center; gap: 5px; border-color: #cbdcf5; background: #f2f7ff; color: #365f9a; }
+.service-pos-closure-note { color: #8995a5; font-size: 9px; text-align: center; }
 .split-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: #101827a8; }
 .split-dialog { width: min(760px,100%); max-height: min(90dvh,900px); overflow-y: auto; border: 1px solid #e4e9f0; border-radius: 16px; background: #fff; color: #26354a; box-shadow: 0 28px 90px #10182750; }
 .split-dialog > header { display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #edf0f4; }

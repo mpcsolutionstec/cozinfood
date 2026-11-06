@@ -192,18 +192,6 @@ export default function TableService({ table, profile, onClose, onChanged }) {
     else { setNotice('Mesa marcada como aguardando conta.'); onChanged?.(); }
   };
 
-  const closeOrder = async () => {
-    if (!activeOrder) return;
-    setSending(true);
-    setError('');
-    const { error: itemError } = await supabase.from('order_items').update({ status: 'entregue' }).eq('order_id', activeOrder.id).not('status', 'in', '(entregue,cancelado)');
-    if (itemError) { setError(`Não foi possível finalizar os itens: ${itemError.message}`); setSending(false); return; }
-    const { error: closeError } = await supabase.from('orders').update({ status: 'entregue' }).eq('id', activeOrder.id);
-    if (closeError) setError(`Não foi possível fechar a comanda: ${closeError.message}`);
-    else { setActiveOrder(null); setNotice('Comanda finalizada e mesa liberada.'); onChanged?.(); }
-    setSending(false);
-  };
-
   const changeSplitCount = count => {
     const next = Math.min(20, Math.max(2, Number(count) || 2));
     setSplitCount(next);
@@ -288,7 +276,7 @@ export default function TableService({ table, profile, onClose, onChanged }) {
         <aside className="service-cart"><div className="service-cart-heading"><div><h3><ShoppingBag size={16}/> Novo pedido</h3><span>{cart.length} produto(s)</span></div><b>{money(cartTotal)}</b></div>
           {activeOrder && <div className="service-open-order"><div><ReceiptText size={15}/><b>Comanda aberta · #{activeOrder.order_number}</b></div>{activeOrder.order_items?.map(item => <div className="service-existing-item" key={item.id}><span>{item.quantity}× {item.name}{item.fraction_label ? ` · ${item.fraction_label}` : ''}</span><span>{money(item.line_total)}</span></div>)}<div className="service-existing-total"><span>Acumulado</span><b>{money(activeOrder.total)}</b></div></div>}
           <div className="service-cart-items">{cart.map(item => <article className="service-cart-item" key={item.key}>{productImageUrl(item.product) ? <img className="service-cart-photo" src={productImageUrl(item.product)} alt="" onError={event => { event.currentTarget.style.display = 'none'; }}/> : <span className="service-cart-photo-placeholder"><ChefHat size={14}/></span>}<div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><small>{money(item.fraction?.price ?? item.product.base_price)} cada</small><input value={item.notes} onChange={event => changeNote(item.key, event.target.value)} placeholder="Observação (opcional)" maxLength={300}/></div><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => changeQuantity(item.key, quantity)}/></article>)}{cart.length === 0 && <div className="service-cart-empty">Toque em um item para adicioná-lo ao pedido.</div>}</div>
-          <form onSubmit={submitOrder} className="service-submit-form"><label>Observação do pedido<input value={orderNote} onChange={event => setOrderNote(event.target.value)} placeholder="Ex.: enviar primeiro as bebidas" maxLength={1000}/></label><button className="primary" disabled={sending || cart.length === 0}><Send size={15}/>{sending ? 'Enviando...' : activeOrder ? 'Adicionar à comanda' : 'Enviar para preparo'}</button>{activeOrder && <div className="service-bottom-actions"><button type="button" onClick={requestBill} disabled={sending}>Pedir conta</button><button type="button" className="service-split-action" onClick={() => { setSplitOpen(true); setSplitError(''); }} disabled={sending}><CreditCard size={14}/>Dividir conta / Pix</button><button type="button" onClick={closeOrder} disabled={sending}>Finalizar comanda</button></div>}</form>
+          <form onSubmit={submitOrder} className="service-submit-form"><label>Observação do pedido<input value={orderNote} onChange={event => setOrderNote(event.target.value)} placeholder="Ex.: enviar primeiro as bebidas" maxLength={1000}/></label><button className="primary" disabled={sending || cart.length === 0}><Send size={15}/>{sending ? 'Enviando...' : activeOrder ? 'Adicionar à comanda' : 'Enviar para preparo'}</button>{activeOrder && <><div className="service-bottom-actions"><button type="button" onClick={requestBill} disabled={sending}>Pedir conta</button><button type="button" className="service-split-action" onClick={() => { setSplitOpen(true); setSplitError(''); }} disabled={sending}><CreditCard size={14}/>Dividir conta / Pix</button></div><small className="service-pos-closure-note">Feche a conta e libere a mesa pelo PDV.</small></>}</form>
         </aside>
       </div>}
     </section>
