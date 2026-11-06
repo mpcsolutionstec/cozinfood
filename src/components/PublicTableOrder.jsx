@@ -98,13 +98,21 @@ export default function PublicTableOrder({ qrToken }) {
     });
   }, [menu, cart.length]);
   useEffect(() => {
-    if (!receipt?.order_id) return undefined;
+    if (!supabase || !receipt?.order_id) return undefined;
     let active = true;
     const refreshStatus = async () => {
       const { data } = await supabase.rpc('get_public_table_order_status', { p_qr_token: qrToken, p_order_id: receipt.order_id });
       if (active && data) setLiveStatus(data);
     };
     refreshStatus();
+    const channel = supabase
+      .channel(`qr-order:${qrToken}`, { config: { private: false } })
+      .on('broadcast', { event: 'order_status_updated' }, message => {
+        if (message.payload?.order_id === receipt.order_id) refreshStatus();
+      })
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') refreshStatus();
+      });
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') refreshStatus();
     };
@@ -116,6 +124,7 @@ export default function PublicTableOrder({ qrToken }) {
       window.clearInterval(timer);
       window.removeEventListener('focus', refreshStatus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      supabase.removeChannel(channel);
     };
   }, [qrToken, receipt?.order_id]);
 
