@@ -164,7 +164,26 @@
 }
 
 .qr-product-fraction-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 88px;
   min-height: 38px;
+}
+
+.qr-product-fraction-option > span {
+  min-width: 0;
+  flex: initial;
+}
+
+.qr-product-fraction-option > b {
+  min-width: 62px;
+  justify-self: end;
+  text-align: right;
+}
+
+.qr-product-fraction-option > .quantity-control {
+  box-sizing: border-box;
+  width: 88px;
+  min-width: 88px;
 }
 
 .qr-product-fractions {
@@ -233,6 +252,16 @@
   .qr-product-fraction-option .quantity-control,
   .digital-size-option .quantity-control {
     min-width: 74px;
+  }
+  .qr-product-fraction-option {
+    grid-template-columns: minmax(0, 1fr) 66px 78px;
+  }
+  .qr-product-fraction-option > b {
+    min-width: 58px;
+  }
+  .qr-product-fraction-option > .quantity-control {
+    width: 78px;
+    min-width: 78px;
   }
   .service-variant-option .quantity-control button,
   .pos-product-fraction-option .quantity-control button,
