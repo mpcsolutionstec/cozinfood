@@ -210,6 +210,16 @@
   }
 }
 
+.service-products {
+  grid-auto-rows: max-content;
+}
+
+.service-products > .service-product {
+  align-self: start;
+  height: auto;
+  min-height: max-content;
+}
+
 @media (max-width: 680px) {
   .service-variant-option,
   .pos-product-fraction-option,
