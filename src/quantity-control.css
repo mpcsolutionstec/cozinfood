@@ -175,6 +175,41 @@
   margin-top: 2px;
 }
 
+/* Atendimento de mesas: organiza detalhes e opções em faixas independentes. */
+.service-product {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  justify-content: initial;
+  gap: 10px;
+}
+
+.service-product-details {
+  min-width: 0;
+}
+
+.service-product > .service-variants,
+.service-product > .service-add {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+.service-product > .service-variants {
+  display: grid;
+  gap: 6px;
+}
+
+.service-product > .service-add {
+  box-sizing: border-box;
+}
+
+@media (max-width: 1020px) {
+  .service-products {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 680px) {
   .service-variant-option,
   .pos-product-fraction-option,
