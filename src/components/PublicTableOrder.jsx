@@ -16,6 +16,15 @@ const orderStatusMeta = {
   entregue: { label: orderStatusLabel.entregue, tone: 'done', icon: CircleCheck },
   cancelado: { label: orderStatusLabel.cancelado, tone: 'cancelled', icon: XCircle },
 };
+const getCustomerVisibleStatus = order => {
+  const statuses = (order?.items || []).map(item => item.status).filter(status => status && status !== 'cancelado');
+  if (!statuses.length) return order?.status;
+  if (statuses.includes('pendente')) return 'pendente';
+  if (statuses.includes('em_preparo')) return 'em_preparo';
+  if (statuses.includes('pronto')) return 'pronto';
+  if (statuses.every(status => status === 'entregue')) return 'entregue';
+  return order?.status;
+};
 
 export default function PublicTableOrder({ qrToken }) {
   const storageKey = `cozinfood:public-table-order:${qrToken}`;
@@ -96,8 +105,18 @@ export default function PublicTableOrder({ qrToken }) {
       if (active && data) setLiveStatus(data);
     };
     refreshStatus();
-    const timer = window.setInterval(refreshStatus, 8000);
-    return () => { active = false; window.clearInterval(timer); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshStatus();
+    };
+    const timer = window.setInterval(refreshStatus, 4000);
+    window.addEventListener('focus', refreshStatus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshStatus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [qrToken, receipt?.order_id]);
 
   const products = useMemo(() => (menu?.categories || []).filter(category => categoryId === 'all' || category.id === categoryId).flatMap(category => category.products || []), [menu, categoryId]);
@@ -143,7 +162,13 @@ export default function PublicTableOrder({ qrToken }) {
     });
     if (submitError) setError(`Não foi possível enviar. ${submitError.message}`);
     else {
-      setReceipt(data);
+      const savedReceipt = { ...data, table_number: menu?.table_number ?? data.table_number };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ cart: [], customerName, orderNote: '', receipt: savedReceipt }));
+      } catch {
+        setError('O pedido foi enviado, mas não foi possível salvá-lo neste navegador.');
+      }
+      setReceipt(savedReceipt);
       setLiveStatus(null);
       setCart([]);
       setOrderNote('');
@@ -158,11 +183,7 @@ export default function PublicTableOrder({ qrToken }) {
       <section className="qr-welcome"><span>SEJA BEM-VINDO</span><h1>Faça seu pedido à mesa</h1><p>Escolha os itens. A equipe recebe seu pedido na hora.</p></section>
       {error && <div className="qr-inline-error" role="alert">{error}</div>}
       {receipt && (() => {
-        const unfinishedItems = (liveStatus?.items || []).filter(item => !['entregue', 'cancelado'].includes(item.status));
-        const progressStatus = liveStatus?.status === 'entregue' && unfinishedItems.length
-          ? unfinishedItems.some(item => item.status === 'pendente') ? 'pendente'
-            : unfinishedItems.some(item => item.status === 'em_preparo') ? 'em_preparo' : 'pronto'
-          : liveStatus?.status;
+        const progressStatus = getCustomerVisibleStatus(liveStatus);
         const current = orderStatusMeta[progressStatus] || { label: 'Aguardando confirmação da cozinha', tone: 'pending', icon: Clock3 };
         const CurrentIcon = current.icon;
         return <section className={`qr-receipt status-${current.tone}`} aria-live="polite">
