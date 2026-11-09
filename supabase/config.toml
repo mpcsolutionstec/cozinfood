@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+[functions.invite-staff]
+verify_jwt = true
