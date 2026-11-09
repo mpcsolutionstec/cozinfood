@@ -1,0 +1,14 @@
+{
+  "name": "COZINFOOD Garçom",
+  "short_name": "COZINFOOD",
+  "description": "Atendimento móvel do salão e envio de pedidos para produção.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f7fa",
+  "theme_color": "#172338",
+  "icons": [
+    { "src": "./waiter-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
