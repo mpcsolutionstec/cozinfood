@@ -10,6 +10,17 @@ const roleInfo = {
 };
 const emptyInvite = { full_name: '', email: '', phone: '', role: 'garcom' };
 
+async function getFunctionErrorMessage(error) {
+  const response = error?.context;
+  if (response && typeof response.clone === 'function') {
+    try {
+      const body = await response.clone().json();
+      if (body?.error) return body.code ? `${body.error} (${body.code})` : body.error;
+    } catch { /* Retain the SDK message when the response is not JSON. */ }
+  }
+  return error?.message || 'Falha no serviço.';
+}
+
 export default function StaffManager({ profile }) {
   const [members, setMembers] = useState([]);
   const [drafts, setDrafts] = useState({});
@@ -47,7 +58,7 @@ export default function StaffManager({ profile }) {
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase('pt-BR');
-    return members.filter(member => !needle || `${member.full_name} ${member.email} ${member.phone || ''} ${roleInfo[member.role]?.label || member.role}`.toLocaleLowerCase('pt-BR').includes(needle));
+    return members.filter(member => !needle || `${member.full_name} ${member.email || ''} ${member.phone || ''} ${roleInfo[member.role]?.label || member.role}`.toLocaleLowerCase('pt-BR').includes(needle));
   }, [members, search]);
   const stats = useMemo(() => ({
     total: members.length,
@@ -60,6 +71,14 @@ export default function StaffManager({ profile }) {
   const saveMember = async member => {
     const draft = drafts[member.id];
     setSavingId(member.id); setError(''); setNotice('');
+    if (member.role === 'garcom' && (draft.phone || '') !== (member.phone || '')) {
+      const { data, error: phoneError } = await supabase.functions.invoke('invite-staff', { body: { action: 'update_phone', user_id: member.id, phone: draft.phone } });
+      if (phoneError || data?.error) {
+        const detail = data?.error || await getFunctionErrorMessage(phoneError);
+        setError(`Não foi possível atualizar o telefone de ${member.full_name}: ${detail}`);
+        setSavingId(''); return;
+      }
+    }
     const { error: saveError } = await supabase.rpc('update_staff_member', {
       p_user_id: member.id, p_role: draft.role, p_active: draft.active,
       p_full_name: draft.full_name, p_phone: draft.phone,
@@ -73,15 +92,16 @@ export default function StaffManager({ profile }) {
     event.preventDefault(); setInviteBusy(true); setError(''); setNotice('');
     const { data, error: inviteError } = await supabase.functions.invoke('invite-staff', { body: invite });
     if (inviteError || data?.error) {
-      setError(`Não foi possível enviar o convite: ${data?.error || inviteError?.message || 'Falha no serviço de convites.'}`);
+      const detail = data?.error || await getFunctionErrorMessage(inviteError);
+      setError(`Não foi possível enviar o convite: ${detail}`);
       setInviteBusy(false); return;
     }
-    setNotice(`Convite enviado para ${data.email}. A pessoa receberá um link para criar a senha.`);
+    setNotice(`Convite enviado para ${data.email}. A pessoa receberá um link para confirmar o e-mail e criar a senha.`);
     setInvite(emptyInvite); setInviteOpen(false); setInviteBusy(false); await loadMembers();
   };
 
   return <div className="staff-page">
-    <div className="page-heading staff-heading"><div><h1>Equipe e acessos</h1><p>Convide pessoas e controle a função de cada usuário no restaurante.</p></div><button className="primary staff-invite-button" onClick={() => { setInviteOpen(true); setError(''); }}><UserPlus size={16}/> Convidar usuário</button></div>
+    <div className="page-heading staff-heading"><div><h1>Equipe e acessos</h1><p>Envie convites por e-mail e gerencie as funções da equipe.</p></div><button className="primary staff-invite-button" onClick={() => { setInviteOpen(true); setError(''); }}><UserPlus size={16}/> Convidar usuário</button></div>
     <div className="staff-stats"><article><span className="staff-stat-icon all"><UsersRound size={18}/></span><div><small>Usuários</small><b>{stats.total}</b></div></article><article><span className="staff-stat-icon admin"><ShieldCheck size={18}/></span><div><small>Administradores</small><b>{stats.admins}</b></div></article><article><span className="staff-stat-icon waiter"><UsersRound size={18}/></span><div><small>Garçons ativos</small><b>{stats.waiters}</b></div></article><article><span className="staff-stat-icon cashier"><span>R$</span></span><div><small>Caixas ativos</small><b>{stats.cashiers}</b></div></article></div>
     {notice && <div className="staff-notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Fechar"><X size={15}/></button></div>}
     {error && <div className="staff-error" role="alert">{error}<button onClick={() => setError('')} aria-label="Fechar"><X size={15}/></button></div>}
@@ -91,7 +111,7 @@ export default function StaffManager({ profile }) {
         const changed = draft.full_name !== member.full_name || draft.phone !== (member.phone || '') || draft.role !== member.role || draft.active !== member.active;
         return <article className={`staff-row ${member.active ? '' : 'inactive'}`} key={member.id}>
           <div className="staff-avatar">{member.full_name.trim().split(/\s+/).map(word => word[0]).join('').slice(0,2).toUpperCase()}</div>
-          <div className="staff-identity"><b>{member.full_name}</b><span><Mail size={13}/>{member.email}</span>{member.phone && <span><Phone size={13}/>{member.phone}</span>}</div>
+          <div className="staff-identity"><b>{member.full_name}</b>{member.email&&<span><Mail size={13}/>{member.email}</span>}{member.phone && <span><Phone size={13}/>{member.phone}</span>}</div>
           <label className="staff-field staff-name-field"><span>Nome</span><input value={draft.full_name} maxLength={80} onChange={event => updateDraft(member.id,'full_name',event.target.value)}/></label>
           <label className="staff-field staff-role-field"><span>Função</span><select value={draft.role} onChange={event => updateDraft(member.id,'role',event.target.value)}>{Object.entries(roleInfo).map(([role,info]) => <option key={role} value={role}>{info.label}</option>)}</select><small>{roleInfo[draft.role]?.detail}</small></label>
           <label className="staff-field staff-phone-field"><span>Telefone</span><input value={draft.phone} maxLength={30} placeholder="Opcional" onChange={event => updateDraft(member.id,'phone',event.target.value)}/></label>
@@ -101,6 +121,6 @@ export default function StaffManager({ profile }) {
       })}</div> : <div className="staff-empty"><UsersRound size={26}/><b>Nenhum usuário encontrado</b><span>Convide a equipe ou ajuste a busca.</span></div>}
     </section>
     <section className="staff-roles"><h2>O que cada função pode fazer</h2><div>{Object.entries(roleInfo).map(([role,info]) => <article key={role}><span className={`staff-stat-icon ${role}`}>{role==='admin'?<ShieldCheck size={17}/>:role==='caixa'?<span>R$</span>:<UsersRound size={17}/>}</span><div><b>{info.label}</b><small>{info.detail}</small></div></article>)}</div></section>
-    {inviteOpen && <div className="staff-modal-backdrop" onMouseDown={event => { if(event.target===event.currentTarget&&!inviteBusy)setInviteOpen(false); }}><section className="staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-invite-title"><header><div><span className="staff-modal-icon"><UserPlus size={19}/></span><div><h2 id="staff-invite-title">Convidar usuário</h2><p>O convite será enviado por e-mail para acessar este restaurante.</p></div></div><button onClick={() => setInviteOpen(false)} disabled={inviteBusy} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={inviteMember}><label>Nome completo<input autoFocus value={invite.full_name} minLength={2} maxLength={80} onChange={event => setInvite(current => ({...current,full_name:event.target.value}))} required/></label><label>E-mail<input type="email" autoComplete="email" value={invite.email} onChange={event => setInvite(current => ({...current,email:event.target.value}))} required/></label><label>Telefone <small>Opcional</small><input type="tel" value={invite.phone} maxLength={30} onChange={event => setInvite(current => ({...current,phone:event.target.value}))}/></label><label>Função<select value={invite.role} onChange={event => setInvite(current => ({...current,role:event.target.value}))}>{Object.entries(roleInfo).map(([role,info]) => <option key={role} value={role}>{info.label} · {info.detail}</option>)}</select></label><div className="staff-invite-note">A pessoa receberá um link para confirmar o e-mail e definir a própria senha.</div>{error && <div className="staff-error" role="alert">{error}</div>}<footer><button type="button" className="staff-cancel" onClick={() => setInviteOpen(false)} disabled={inviteBusy}>Cancelar</button><button className="primary" disabled={inviteBusy}>{inviteBusy ? 'Enviando convite…' : <><Mail size={15}/> Enviar convite</>}</button></footer></form></section></div>}
+    {inviteOpen && <div className="staff-modal-backdrop" onMouseDown={event => { if(event.target===event.currentTarget&&!inviteBusy)setInviteOpen(false); }}><section className="staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-invite-title"><header><div><span className="staff-modal-icon"><UserPlus size={19}/></span><div><h2 id="staff-invite-title">Convidar usuário</h2><p>{invite.role==='garcom'?'O garçom receberá um convite por e-mail para criar a senha.':'A pessoa receberá o convite por e-mail.'}</p></div></div><button onClick={() => setInviteOpen(false)} disabled={inviteBusy} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={inviteMember}><label>Nome completo<input autoFocus value={invite.full_name} minLength={2} maxLength={80} onChange={event => setInvite(current => ({...current,full_name:event.target.value}))} required/></label><label>E-mail<input type="email" autoComplete="email" value={invite.email} onChange={event => setInvite(current => ({...current,email:event.target.value}))} required/></label><label>Telefone <small>Opcional</small><input type="tel" autoComplete="tel" value={invite.phone} maxLength={30} placeholder="(11) 99999-9999" onChange={event => setInvite(current => ({...current,phone:event.target.value}))}/></label><label>Função<select value={invite.role} onChange={event => setInvite(current => ({...current,role:event.target.value}))}>{Object.entries(roleInfo).map(([role,info]) => <option key={role} value={role}>{info.label} · {info.detail}</option>)}</select></label><div className="staff-invite-note">O Supabase enviará um link para confirmar o e-mail e criar a senha de acesso.</div>{error && <div className="staff-error" role="alert">{error}</div>}<footer><button type="button" className="staff-cancel" onClick={() => setInviteOpen(false)} disabled={inviteBusy}>Cancelar</button><button className="primary" disabled={inviteBusy}>{inviteBusy ? 'Enviando convite…' : <><Mail size={15}/> Enviar convite</>}</button></footer></form></section></div>}
   </div>;
 }
