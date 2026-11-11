@@ -24,6 +24,11 @@ function Overview({tables,orders,setTab,firstName,greeting}){return <><div class
 function Tables({tables}){return <><div className="page-heading"><div><h1>Salão e mesas</h1><p>Visualização do salão e comandas abertas.</p></div><button className="primary">＋ Abrir comanda</button></div><section className="panel"><div className="panel-head"><div><h2>Salão principal</h2><p>{tables.filter(x=>x.status==='ocupada').length} ocupadas · {tables.length} mesas</p></div><div className="legend"><span><i className="free-dot"/> Livre</span><span><i/> Ocupada</span></div></div><div className="full-table-grid">{tables.map(t=><article className={`floor-table ${t.status==='ocupada'?'occupied':''}`} key={t.id}><div><span className="table-number">{t.number}</span><span className="badge">{t.status==='ocupada'?'Ocupada':'Livre'}</span></div><b>{t.status==='ocupada'?money(t.current_total):'Disponível'}</b><small>{t.status==='ocupada'?'Comanda aberta':'Toque para iniciar'}</small></article>)}</div></section></>}
 function KDS(){const [sector,setSector]=useState('all');const {orders,changeStatus,live}=useKDSOrders(sector);const sectors=['all','cozinha','bar','forno_pizza'];const labels={all:'Todos os setores',cozinha:'Cozinha',bar:'Bar',forno_pizza:'Forno de pizza'};return <><div className="page-heading"><div><h1>Cozinha / KDS</h1><p>Fila de produção sincronizada em tempo real.</p></div><span className="live"><i/>{live?'Ao vivo':'Demonstração'}</span></div><div className="filter-row">{sectors.map(s=><button key={s} onClick={()=>setSector(s)} className={`filter ${sector===s?'active':''}`}>{labels[s]}</button>)}</div><div className="kds-grid">{orders.map((o,i)=><article className="ticket" key={o.id}><div className="ticket-head"><b>#{o.order_id}</b><span className={`timer ${i===0?'late':''}`}>◷ {Math.max(1,Math.floor((Date.now()-new Date(o.created_at).getTime())/60000))} min</span></div><div className="ticket-origin">{labels[o.destination_sector]||'COZINHA'} · Mesa {i+3}</div><div className="ticket-item"><strong>{o.quantity}× {o.name}</strong><p>{o.notes||'Sem observações'}</p></div><div className="ticket-actions"><button onClick={()=>changeStatus(o.id,o.status==='pendente'?'em_preparo':'pronto')} className="primary">{o.status==='pendente'?'Iniciar preparo':'Marcar pronto'}</button></div></article>)}</div></>}
 export default function App(){
+ const {profile,signOut}=useAuth();
+ if(profile?.role==='garcom')return <WaiterApp onLogout={signOut}/>;
+ return <AdminApp/>;
+}
+function AdminApp(){
  const {session,profile,signOut}=useAuth();
  const [registeredRestaurantName,setRegisteredRestaurantName]=useState('');
  useEffect(()=>{const restaurantId=profile?.restaurant_id;if(!restaurantId||!supabase){setRegisteredRestaurantName(session?.user?.user_metadata?.restaurant_name||'');return}let active=true;supabase.from('restaurants').select('name').eq('id',restaurantId).maybeSingle().then(({data})=>{if(active)setRegisteredRestaurantName(data?.name||session?.user?.user_metadata?.restaurant_name||'')});return()=>{active=false}},[profile?.restaurant_id,session?.user?.id]);
@@ -32,7 +37,7 @@ export default function App(){
  const initials=name.trim().split(/\s+/).map(part=>part[0]).join('').slice(0,2).toUpperCase();
  const [greeting,setGreeting]=useState(getGreeting);
  useEffect(()=>{const timer=setInterval(()=>setGreeting(getGreeting()),60000);return()=>clearInterval(timer)},[]);
- const initialTab=profile?.role==='garcom'?'Salão e mesas':profile?.role==='caixa'?'PDV':'Visão geral';
+ const initialTab=profile?.role==='caixa'?'PDV':'Visão geral';
  const [tab,setTab]=useState(initialTab);
  useEffect(()=>setTab(initialTab),[initialTab]);
  const [theme,setTheme]=useState(()=>window.localStorage.getItem('cozinfood-theme')==='dark'?'dark':'light');
@@ -40,8 +45,7 @@ export default function App(){
  const {tables,live:tl,loading:tablesLoading,error:tablesError,refresh:refreshTables}=useTableStatus();
  const {orders,live:ol}=useKDSOrders('all','dashboard');
  const live=tl||ol;
- const menuTabs=profile?.role==='garcom'?tabs.filter(([label])=>label==='Salão e mesas'||label==='PDV'):profile?.role==='caixa'?tabs.filter(([label])=>label==='PDV'):tabs;
+ const menuTabs=profile?.role==='caixa'?tabs.filter(([label])=>label==='PDV'):tabs;
  const toggleTheme=()=>setTheme(current=>current==='light'?'dark':'light');
- if(profile?.role==='garcom')return <WaiterApp onLogout={signOut}/>;
  return <><TableServiceAlerts role={profile?.role}/><div className="app-shell"><Sidebar tab={tab} setTab={setTab} name={name} initials={initials} restaurantName={restaurantName} menuTabs={menuTabs} roleLabel={roleLabels[profile?.role]||'Administrador'}/><main className="main"><Header live={live} initials={initials} onLogout={signOut} theme={theme} onToggleTheme={toggleTheme}/><div className="content">{tab==='Visão geral'?<Overview tables={tables} orders={orders} setTab={setTab} firstName={name} greeting={greeting}/>:tab==='Produtos'?<ProductCatalogManager/>:tab==='PDV'?<PointOfSale/>:tab==='Salão e mesas'?<TablesManager tables={tables} loading={tablesLoading} loadError={tablesError} refresh={refreshTables}/>:tab==='Equipe e acessos'&&profile?.role==='admin'?<StaffManager profile={profile}/>:tab==='Cozinha / KDS'?<KitchenDisplay/>:tab==='Pizzas e esfihas'?<PizzaMenuManager/>:tab==='Estoque e receitas'?<InventoryManager/>:tab==='Delivery'?<Delivery/>:tab==='Cardápio digital'?<DigitalMenuManager/>:<div className="page-heading"><div><h1>{tab}</h1><p>Módulo preparado para configuração com Supabase.</p></div></div>}</div><footer className="foot"><span>© 2026 COZINFOOD · Gestão inteligente para food service</span><span>● Sistema operacional</span></footer></main></div></>;
 }
