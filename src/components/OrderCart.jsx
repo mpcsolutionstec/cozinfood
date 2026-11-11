@@ -4,11 +4,12 @@ import { supabase } from '../lib/supabaseClient';
 import { useWaiterStore } from '../stores/useWaiterStore';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const EMPTY_CART = Object.freeze([]);
 const imageFor = product => product?.image_url || (product?.image_path && supabase ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '');
 const statusText = { pendente: 'Na fila', em_preparo: 'Em preparo', pronto: 'Pronto', entregue: 'Entregue', cancelado: 'Cancelado' };
 
 export default function OrderCart({ table, tables, profile, onBack, onNotice, onTableChanged, onAction }) {
-  const cart = useWaiterStore(state => state.carts[table.id] || []);
+  const cart = useWaiterStore(state => state.carts[table.id] || EMPTY_CART);
   const addItem = useWaiterStore(state => state.addItem);
   const setQuantity = useWaiterStore(state => state.setQuantity);
   const setItemNote = useWaiterStore(state => state.setItemNote);
