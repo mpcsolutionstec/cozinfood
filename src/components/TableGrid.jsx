@@ -46,7 +46,7 @@ export default function TableGrid({ tables, loading, error, onRefresh, onSelect,
   return <section className="waiter-floor">
     <div className="waiter-section-heading"><div><h1>Salão</h1><p>Toque em uma mesa para abrir ou continuar o atendimento.</p></div><button className="waiter-refresh" onClick={onRefresh}><RefreshCw size={16}/> Atualizar</button></div>
     <div className="waiter-status-strip">{[['todas','Todas',tables.length],['livre','Livres',tables.filter(t => t.status === 'livre').length],['ocupada','Ocupadas',tables.filter(t => t.status === 'ocupada').length],['aguardando_conta','Conta',tables.filter(t => t.status === 'aguardando_conta').length]].map(([id,label,count]) => <button key={id} className={filter === id ? 'active' : ''} onClick={() => setFilter(id)}>{label}<b>{count}</b></button>)}</div>
-    {error && <div className="waiter-error">Falha ao carregar mesas. <button onClick={onRefresh}>Tentar novamente</button></div>}
+    {error && <div className="waiter-error" role="alert"><div><b>Falha ao carregar mesas.</b><small style={{ display: 'block', marginTop: 4, overflowWrap: 'anywhere', fontSize: 11, lineHeight: 1.45 }}>{error}</small></div><button onClick={onRefresh}>Tentar novamente</button></div>}
     {loading ? <div className="waiter-loading">Carregando salão…</div> : displayed.length === 0 ? <div className="waiter-empty"><Armchair size={32}/><b>Nenhuma mesa nesta lista</b><span>Altere o filtro ou cadastre mesas no painel.</span></div> : <div className="waiter-table-grid">{displayed.map(table => {
       const order = orders[table.id];
       const status = table.status || 'livre';
