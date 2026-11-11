@@ -27,6 +27,7 @@ export default function WaiterApp({ onLogout }) {
   const syncPending = useCallback(async () => {
     if (!online || !profile?.restaurant_id || !supabase) return;
     const { pendingByTable, clearPendingOrder } = useWaiterStore.getState();
+    let didSync = false;
     for (const [tableId, request] of Object.entries(pendingByTable)) {
       try {
         const { error: syncError } = await supabase.rpc('submit_waiter_order', {
@@ -35,11 +36,12 @@ export default function WaiterApp({ onLogout }) {
         });
         if (syncError) throw syncError;
         clearPendingOrder(tableId);
-        setNotice(`Pedido da Mesa ${tables.find(table => table.id === tableId)?.number || ''} sincronizado.`);
+        didSync = true;
+        setNotice('Pedido pendente sincronizado.');
       } catch { /* Mantém na fila para nova tentativa. */ }
     }
-    refresh();
-  }, [online, profile?.restaurant_id, refresh, tables]);
+    if (didSync) refresh();
+  }, [online, profile?.restaurant_id, refresh]);
 
   useEffect(() => { syncPending(); }, [syncPending]);
 
