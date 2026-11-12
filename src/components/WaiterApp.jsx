@@ -23,16 +23,36 @@ export default function WaiterApp({ onLogout }) {
     if (refreshing) return;
     setRefreshing(true);
     try {
+      const { error: reconcileError } = await supabase.rpc('refresh_waiter_tables');
+      if (reconcileError) throw reconcileError;
       const result = await refresh();
-      setNoticeIsError(Boolean(result?.error));
-      setNotice(result?.error ? `Não foi possível atualizar o salão: ${result.error.message}` : 'Salão atualizado.');
+      if (result?.error) throw result.error;
+      const currentTable = useWaiterStore.getState().selectedTable;
+      if (currentTable?.id) {
+        const { data: openOrder, error: orderError } = await supabase.from('orders')
+          .select('id,status')
+          .eq('table_id', currentTable.id)
+          .not('status', 'in', '(entregue,cancelado)')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (orderError) throw orderError;
+        if (!openOrder) {
+          selectTable(null);
+          setNoticeIsError(false);
+          setNotice(`Mesa ${currentTable.number} liberada após o fechamento da venda.`);
+          return;
+        }
+      }
+      setNoticeIsError(false);
+      setNotice('Salão e comanda atualizados.');
     } catch (refreshError) {
       setNoticeIsError(true);
       setNotice(`Não foi possível atualizar o salão: ${refreshError.message || 'Tente novamente.'}`);
     } finally {
       setRefreshing(false);
     }
-  }, [refresh, refreshing]);
+  }, [refresh, refreshing, selectTable]);
 
   useEffect(() => {
     const changed = () => setOnline(navigator.onLine);
@@ -83,6 +103,6 @@ export default function WaiterApp({ onLogout }) {
     {notice && <div className={`waiter-notice ${noticeIsError ? 'is-error' : ''}`} role="status">{notice}<button onClick={() => setNotice('')} aria-label="Fechar"><X size={16}/></button></div>}
     {selectedTable
       ? <OrderCart table={tables.find(table => table.id === selectedTable.id) || selectedTable} tables={tables} profile={profile} onBack={() => selectTable(null)} onNotice={setNotice} onTableChanged={refresh} onAction={(kind, targetId) => action(kind, tables.find(table => table.id === selectedTable.id) || selectedTable, targetId)}/>
-      : <TableGrid tables={tables} loading={loading} error={error} onRefresh={refresh} onSelect={table => selectTable(table)} onAction={action}/>}
+      : <TableGrid tables={tables} loading={loading} error={error} onRefresh={refreshTables} onSelect={table => selectTable(table)} onAction={action}/>}
   </main>;
 }
