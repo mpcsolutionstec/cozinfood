@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const activeStatuses = ['pendente', 'em_preparo', 'pronto'];
-const selectFields = 'id,name,product_id,quantity,destination_sector,status,created_at,started_at,ready_at,notes,fraction_label,flavors,additions,border_id,order_id,products(prep_minutes),orders(order_number,order_type,customer_name,table_id,tables(number))';
+const selectFields = 'id,name,product_id,quantity,destination_sector,status,created_at,started_at,ready_at,notes,fraction_label,flavors,additions,border_id,order_id,products(prep_minutes),orders(order_number,order_type,customer_name,notes,table_id,tables(number))';
 
 function presentItem(item) {
   const order = item.orders || {};
@@ -12,6 +12,7 @@ function presentItem(item) {
     order_number: order.order_number,
     order_type: order.order_type,
     customer_name: order.customer_name,
+    order_notes: order.notes,
     table_number: Array.isArray(relatedTable) ? relatedTable[0]?.number : relatedTable?.number,
     prep_minutes: item.products?.prep_minutes || 15,
   };

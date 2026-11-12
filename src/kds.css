@@ -14,3 +14,5 @@
 :root[data-theme='dark'] .kds-ticket.late .kds-ticket-header{background:#3a252a;}
 :root[data-theme='dark'] .kds-ticket.late .kds-ticket-timer{background:#4a262d;}
 @media(prefers-reduced-motion:reduce){.kds-ticket.late,.kds-ticket.late .kds-ticket-timer{animation:none;}.kds-ticket.late{box-shadow:0 0 0 3px #e5534650;}}
+
+.kds-item-copy .kds-order-notes{padding:7px 8px;border-left:2px solid #e4bd63;border-radius:0 5px 5px 0;background:#fffaf0;color:#79683e}

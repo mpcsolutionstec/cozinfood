@@ -72,6 +72,7 @@ export default function KitchenDisplay() {
           ? `Delivery · ${item.customer_name}`
           : orderTypeLabel[item.order_type] || 'Pedido';
       const note = item.notes?.trim();
+      const orderNote = item.order_notes?.trim();
       if (group) {
         group.ids.push(item.id);
         group.quantity += itemQuantity;
@@ -83,6 +84,7 @@ export default function KitchenDisplay() {
         if (item.customer_name) group.customers.add(item.customer_name);
         group.origins.add(origin);
         if (note) group.noteGroups.set(note, (group.noteGroups.get(note) || 0) + itemQuantity);
+        if (orderNote) group.orderNoteGroups.add(orderNote);
         group.prep_minutes = Math.min(group.prep_minutes, Number(item.prep_minutes || 15));
       } else {
         grouped.set(key, {
@@ -96,12 +98,13 @@ export default function KitchenDisplay() {
           customers: new Set(item.customer_name ? [item.customer_name] : []),
           origins: new Set([origin]),
           noteGroups: new Map(note ? [[note, itemQuantity]] : []),
+          orderNoteGroups: new Set(orderNote ? [orderNote] : []),
           prep_minutes: Number(item.prep_minutes || 15),
         });
       }
     });
     return [...grouped.values()]
-      .map(group => ({ ...group, notes: [...group.noteGroups].map(([text, quantity]) => ({ text, quantity })) }))
+      .map(group => ({ ...group, notes: [...group.noteGroups].map(([text, quantity]) => ({ text, quantity })), orderNotes: [...group.orderNoteGroups] }))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }, [orders]);
 
@@ -228,6 +231,7 @@ export default function KitchenDisplay() {
             {flavors.length > 0 && <p><b>Sabores:</b> {flavors.join(', ')}</p>}{additions.length > 0 && <p><b>Adicionais:</b> {additions.join(', ')}</p>}
             {(group.quantity > 1 || group.lineCount > 1) && <div className="kds-aggregate-badge"><Layers size={13}/><span>Total acumulado</span><b>{formatQuantity(group.quantity)} {group.quantity === 1 ? 'unidade' : 'unidades'}</b>{group.order_numbers.size > 1 && <small>em {group.order_numbers.size} pedidos</small>}</div>}
             {group.notes.map(note => <p className="kds-item-notes" key={note.text}>{note.quantity > 1 ? `${formatQuantity(note.quantity)}× ` : ''}{note.text}</p>)}
+            {group.orderNotes.map(note => <p className="kds-order-notes" key={note}><b>Observação do pedido:</b> {note}</p>)}
           </div></div>
           <footer className="kds-ticket-footer"><span className="kds-due-time">Prazo: {prepTarget} min</span><button className={`kds-action-button ${group.status}`} disabled={busy} onClick={() => advance(group)}>
             {busy ? 'Salvando...' : group.status === 'pronto' ? <><Truck size={15}/>{nextLabel[group.status]}</> : group.status === 'em_preparo' ? <><CircleCheck size={15}/>{nextLabel[group.status]}</> : <><Flame size={15}/>{nextLabel[group.status]}</>}

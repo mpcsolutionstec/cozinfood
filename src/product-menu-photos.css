@@ -32,6 +32,18 @@
   flex: 1;
 }
 
+.digital-cart-item-note {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 8px;
+  border: 1px solid #e6e8df;
+  border-radius: 6px;
+  background: #fff;
+  color: #374438;
+  font: 10px 'DM Sans', sans-serif;
+  resize: vertical;
+}
+
 .service-product {
   align-items: center;
 }
