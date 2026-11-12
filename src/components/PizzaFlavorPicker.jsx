@@ -6,12 +6,14 @@ const sizeKey = fraction => fraction?.name ? `name:${fraction.name}` : `serves:$
 const fractionForSize = (product, selectedFraction) => (product.fractions || product.product_fractions || [])
   .find(fraction => sizeKey(fraction) === sizeKey(selectedFraction));
 
-export default function PizzaFlavorPicker({ products, product, fraction, fractionPricing = 'maior_valor', onCancel, onConfirm }) {
+export default function PizzaFlavorPicker({ products, product, fraction, borders = [], additions = [], fractionPricing = 'maior_valor', onCancel, onConfirm }) {
   const pizzas = useMemo(() => products.filter(item => item.categories?.slug === 'pizzas'), [products]);
   const initialFlavorCount = Math.min(2, pizzas.filter(item => fractionForSize(item, fraction)).length || 1);
   const [fractionId, setFractionId] = useState(fraction.id);
   const [flavorCount, setFlavorCount] = useState(initialFlavorCount);
   const [flavorIds, setFlavorIds] = useState([product.id]);
+  const [borderId, setBorderId] = useState('');
+  const [additionIds, setAdditionIds] = useState([]);
   const selectedFraction = (product.fractions || product.product_fractions || []).find(item => item.id === fractionId) || fraction;
   const eligibleFlavors = useMemo(() => pizzas.filter(item => fractionForSize(item, selectedFraction)), [pizzas, selectedFraction]);
   const selectedFlavors = flavorIds.map(id => eligibleFlavors.find(item => item.id === id)).filter(Boolean);
@@ -21,7 +23,9 @@ export default function PizzaFlavorPicker({ products, product, fraction, fractio
       ? flavorPrice.reduce((sum, price) => sum + price, 0) / flavorPrice.length
       : Math.max(...flavorPrice)
     : Number(selectedFraction?.price || 0);
-  const unitPrice = Math.round(calculatedPrice * 100) / 100;
+  const selectedBorder = borders.find(item => item.id === borderId) || null;
+  const selectedAdditions = additions.filter(item => additionIds.includes(item.id));
+  const unitPrice = Math.round((calculatedPrice + Number(selectedBorder?.price || 0) + selectedAdditions.reduce((sum, item) => sum + Number(item.price || 0), 0)) * 100) / 100;
   const fractionLabel = selectedFlavors.length
     ? `${selectedFraction.name} · ${selectedFlavors.map(item => `${Math.round(100 / flavorCount)}% ${item.name}`).join(' / ')}`
     : selectedFraction?.name || '';
@@ -52,6 +56,8 @@ export default function PizzaFlavorPicker({ products, product, fraction, fractio
         fraction: fractionForSize(item, selectedFraction),
         share: 1 / flavorCount,
       })),
+      border: selectedBorder,
+      additions: selectedAdditions.map(item => ({ ...item, quantity: 1 })),
       unitPrice,
       fractionLabel,
     });
@@ -83,6 +89,12 @@ export default function PizzaFlavorPicker({ products, product, fraction, fractio
         })}
         {!eligibleFlavors.length && <p>Nenhum sabor disponível para este tamanho.</p>}
       </fieldset>
+      {borders.length > 0 && <label className="public-pizza-picker-field">Borda recheada
+        <select value={borderId} onChange={event => setBorderId(event.target.value)}><option value="">Sem borda</option>{borders.map(item => <option key={item.id} value={item.id}>{item.name} · {money(item.price)}</option>)}</select>
+      </label>}
+      {additions.length > 0 && <fieldset className="public-pizza-flavor-list public-pizza-additions"><legend>Adicionais</legend>
+        {additions.map(item => <label key={item.id}><input type="checkbox" checked={additionIds.includes(item.id)} onChange={event => setAdditionIds(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))}/><span>{item.name}</span><small>+ {money(item.price)}</small></label>)}
+      </fieldset>}
       <div className="public-pizza-picker-summary"><span>{fractionLabel || 'Selecione os sabores'}</span><b>{money(unitPrice)}</b></div>
       <button type="submit" className="public-pizza-picker-confirm" disabled={selectedFlavors.length !== flavorCount}><Check size={18}/> Adicionar ao pedido</button>
     </form>

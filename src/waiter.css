@@ -27,3 +27,5 @@
 .waiter-image-preview{position:relative;width:min(720px,100%);max-height:calc(100dvh - 36px);overflow:auto;padding:52px 16px 18px;border-radius:18px;background:white;box-shadow:0 24px 80px #11182745;display:flex;flex-direction:column;align-items:center;gap:14px}
 .waiter-image-preview>img{display:block;max-width:100%;max-height:min(72dvh,680px);object-fit:contain;border-radius:12px}
 .waiter-image-preview h2{margin:0;text-align:center;font:800 16px Manrope,sans-serif;color:var(--wa-ink)}
+.waiter-top-actions>button:disabled{opacity:.55;cursor:wait}.waiter-top-actions>button.is-refreshing svg{animation:waiter-refresh-spin .8s linear infinite}@keyframes waiter-refresh-spin{to{transform:rotate(360deg)}}
+.waiter-notice.is-error{background:#fff0ed;color:#ad4436;border-bottom-color:#f3d1c8}

@@ -15,7 +15,24 @@ export default function WaiterApp({ onLogout }) {
   const selectTable = useWaiterStore(state => state.selectTable);
   const [online, setOnline] = useState(navigator.onLine);
   const [notice, setNotice] = useState('');
+  const [noticeIsError, setNoticeIsError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const pendingCount = Object.keys(useWaiterStore(state => state.pendingByTable)).length;
+
+  const refreshTables = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const result = await refresh();
+      setNoticeIsError(Boolean(result?.error));
+      setNotice(result?.error ? `Não foi possível atualizar o salão: ${result.error.message}` : 'Salão atualizado.');
+    } catch (refreshError) {
+      setNoticeIsError(true);
+      setNotice(`Não foi possível atualizar o salão: ${refreshError.message || 'Tente novamente.'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh, refreshing]);
 
   useEffect(() => {
     const changed = () => setOnline(navigator.onLine);
@@ -61,9 +78,9 @@ export default function WaiterApp({ onLogout }) {
   return <main className="waiter-app">
     <header className="waiter-topbar">
       <div className="waiter-brand"><span><ChefHat size={20}/></span><div><b>COZINFOOD</b><small>Atendimento do garçom</small></div></div>
-      <div className="waiter-top-actions"><span className={`waiter-connection ${online ? 'online' : 'offline'}`}>{online ? <Wifi size={15}/> : <WifiOff size={15}/>}<span>{online ? 'Conectado' : 'Offline'}</span></span>{pendingCount > 0 && <span className="waiter-pending">{pendingCount} na fila</span>}<button onClick={refresh} aria-label="Atualizar mesas"><RefreshCw size={17}/></button><button onClick={onLogout} aria-label="Sair"><LogOut size={17}/></button></div>
+      <div className="waiter-top-actions"><span className={`waiter-connection ${online ? 'online' : 'offline'}`}>{online ? <Wifi size={15}/> : <WifiOff size={15}/>}<span>{online ? 'Conectado' : 'Offline'}</span></span>{pendingCount > 0 && <span className="waiter-pending">{pendingCount} na fila</span>}<button type="button" onClick={refreshTables} disabled={refreshing} className={refreshing ? 'is-refreshing' : ''} aria-label={refreshing ? 'Atualizando mesas' : 'Atualizar mesas'} title="Atualizar salão"><RefreshCw size={17}/></button><button type="button" onClick={onLogout} aria-label="Sair"><LogOut size={17}/></button></div>
     </header>
-    {notice && <div className="waiter-notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Fechar"><X size={16}/></button></div>}
+    {notice && <div className={`waiter-notice ${noticeIsError ? 'is-error' : ''}`} role="status">{notice}<button onClick={() => setNotice('')} aria-label="Fechar"><X size={16}/></button></div>}
     {selectedTable
       ? <OrderCart table={tables.find(table => table.id === selectedTable.id) || selectedTable} tables={tables} profile={profile} onBack={() => selectTable(null)} onNotice={setNotice} onTableChanged={refresh} onAction={(kind, targetId) => action(kind, tables.find(table => table.id === selectedTable.id) || selectedTable, targetId)}/>
       : <TableGrid tables={tables} loading={loading} error={error} onRefresh={refresh} onSelect={table => selectTable(table)} onAction={action}/>}

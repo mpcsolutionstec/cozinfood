@@ -164,7 +164,9 @@ export default function PublicTableOrder({ qrToken }) {
     : items.map(item => item.key === key ? { ...item, quantity } : item));
   const addPizzaSelection = selection => {
     const flavorKey = selection.flavors.map(item => item.product.id).sort().join(',');
-    const key = `${selection.product.id}:${selection.fraction.id}:flavors:${flavorKey}`;
+    const borderKey = selection.border?.id || 'no-border';
+    const additionKey = selection.additions.map(item => item.id).sort().join(',') || 'no-additions';
+    const key = `${selection.product.id}:${selection.fraction.id}:flavors:${flavorKey}:border:${borderKey}:additions:${additionKey}`;
     setCart(items => {
       const existing = items.find(item => item.key === key);
       return existing
@@ -185,6 +187,7 @@ export default function PublicTableOrder({ qrToken }) {
       p_qr_token: qrToken,
       p_customer_name: customerName,
       p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.flavors?.length ? null : item.fraction?.id || null, quantity: item.quantity, notes: item.notes,
+        border_id: item.border?.id || null, additions: (item.additions || []).map(addition => ({ id: addition.id, quantity: addition.quantity || 1 })),
         flavors: (item.flavors || []).map(flavor => ({ product_id: flavor.product.id, product_fraction_id: flavor.fraction.id, fraction: flavor.share })) })),
       p_notes: orderNote,
     });
@@ -241,6 +244,7 @@ export default function PublicTableOrder({ qrToken }) {
                 <div className="qr-cart-item-content">
                   <div className="qr-cart-item-heading"><b>{item.flavors?.length ? item.flavors.map(flavor => flavor.product.name).join(' / ') : item.product.name}</b><button type="button" className="qr-cart-remove" onClick={() => removeItem(item.key)} aria-label="Remover item" title="Remover item"><Trash2 size={16}/></button></div>
                   {item.fraction && <span className="qr-cart-item-variant">{item.flavors?.length ? item.fractionLabel : `Tamanho · ${item.fraction.name}`}</span>}
+                  {(item.border || item.additions?.length > 0) && <span className="qr-cart-item-variant">{[item.border && `Borda: ${item.border.name}`, ...(item.additions || []).map(addition => `Adicional: ${addition.name}`)].filter(Boolean).join(' · ')}</span>}
                   <div className="qr-cart-item-pricing"><span>{money(unitPrice)} <small>cada</small></span><strong>{money(unitPrice * item.quantity)}</strong></div>
                   <div className="qr-cart-item-bottom">
                     <QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => changeQuantity(item.key, quantity)}/>
@@ -261,7 +265,7 @@ export default function PublicTableOrder({ qrToken }) {
         </aside></div>}
       {!cartVisible && menu.table_status !== 'reservada' && <button type="button" className="qr-mobile-cart-button" onClick={() => document.getElementById('qr-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label="Abrir meu pedido"><ShoppingCart size={20}/><span>Meu pedido</span><b>{cartCount}</b><strong>{money(cartTotal)}</strong></button>}
     </>}
-    {pizzaSelection && <PizzaFlavorPicker products={allProducts} product={pizzaSelection.product} fraction={pizzaSelection.fraction} fractionPricing={menu?.fraction_pricing} onCancel={() => setPizzaSelection(null)} onConfirm={addPizzaSelection}/>}
+    {pizzaSelection && <PizzaFlavorPicker products={allProducts} product={pizzaSelection.product} fraction={pizzaSelection.fraction} borders={menu?.pizza_borders || []} additions={menu?.product_additions || []} fractionPricing={menu?.fraction_pricing} onCancel={() => setPizzaSelection(null)} onConfirm={addPizzaSelection}/>}
     {imagePreview && <div className="public-product-image-preview-layer" onMouseDown={event => { if (event.target === event.currentTarget) setImagePreview(null); }}><section className="public-product-image-preview" role="dialog" aria-modal="true" aria-label={`Foto de ${imagePreview.name}`}><button type="button" className="public-product-image-preview-close" onClick={() => setImagePreview(null)} aria-label="Fechar foto"><X size={20}/></button><img src={imagePreview.url} alt={imagePreview.name}/><h2>{imagePreview.name}</h2></section></div>}
     <footer className="qr-order-footer">COZINFOOD · Atendimento digital à mesa</footer>
   </main>;
