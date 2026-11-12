@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, X, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import QuantityControl from './QuantityControl';
+import PizzaFlavorPicker from './PizzaFlavorPicker';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const productImageUrl = product => {
@@ -44,6 +45,7 @@ export default function PublicTableOrder({ qrToken }) {
   const [liveStatus, setLiveStatus] = useState(null);
   const [cartVisible, setCartVisible] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [pizzaSelection, setPizzaSelection] = useState(null);
 
   const loadMenu = async () => {
     setLoading(true);
@@ -129,8 +131,12 @@ export default function PublicTableOrder({ qrToken }) {
     };
   }, [qrToken, receipt?.order_id]);
 
-  const products = useMemo(() => (menu?.categories || []).filter(category => categoryId === 'all' || category.id === categoryId).flatMap(category => category.products || []), [menu, categoryId]);
-  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * Number(item.fraction?.price ?? item.product.base_price), 0), [cart]);
+  const allProducts = useMemo(() => (menu?.categories || []).flatMap(category => (category.products || []).map(product => ({
+    ...product,
+    categories: { ...(product.categories || {}), name: category.name, slug: category.slug },
+  }))), [menu]);
+  const products = useMemo(() => allProducts.filter(product => categoryId === 'all' || product.categories?.slug === menu?.categories?.find(category => category.id === categoryId)?.slug), [allProducts, menu, categoryId]);
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + item.quantity * Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price), 0), [cart]);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
@@ -156,6 +162,17 @@ export default function PublicTableOrder({ qrToken }) {
   const changeQuantity = (key, quantity) => setCart(items => quantity <= 0
     ? items.filter(item => item.key !== key)
     : items.map(item => item.key === key ? { ...item, quantity } : item));
+  const addPizzaSelection = selection => {
+    const flavorKey = selection.flavors.map(item => item.product.id).sort().join(',');
+    const key = `${selection.product.id}:${selection.fraction.id}:flavors:${flavorKey}`;
+    setCart(items => {
+      const existing = items.find(item => item.key === key);
+      return existing
+        ? items.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item)
+        : [...items, { ...selection, key, quantity: 1, notes: '' }];
+    });
+    setPizzaSelection(null);
+  };
   const removeItem = key => setCart(items => items.filter(item => item.key !== key));
   const changeNote = (key, notes) => setCart(items => items.map(item => item.key === key ? { ...item, notes } : item));
 
@@ -167,7 +184,8 @@ export default function PublicTableOrder({ qrToken }) {
     const { data, error: submitError } = await supabase.rpc('submit_table_order', {
       p_qr_token: qrToken,
       p_customer_name: customerName,
-      p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.fraction?.id || null, quantity: item.quantity, notes: item.notes })),
+      p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.flavors?.length ? null : item.fraction?.id || null, quantity: item.quantity, notes: item.notes,
+        flavors: (item.flavors || []).map(flavor => ({ product_id: flavor.product.id, product_fraction_id: flavor.fraction.id, fraction: flavor.share })) })),
       p_notes: orderNote,
     });
     if (submitError) setError(`Não foi possível enviar. ${submitError.message}`);
@@ -208,7 +226,7 @@ export default function PublicTableOrder({ qrToken }) {
           <button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button>
         </section>;
       })()}
-      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => { const imageUrl = productImageUrl(product); return <article className="qr-product-card" key={product.id}>{imageUrl && <button type="button" className="qr-product-photo-button" onClick={event => { event.preventDefault(); event.stopPropagation(); setImagePreview({ name: product.name, url: imageUrl }); }} aria-label={`Ampliar foto de ${product.name}`}><img className="qr-product-photo" src={imageUrl} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/></button>}<div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <div className="qr-product-fraction-option" key={fraction.id}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="qr-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>; })}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
+      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => { const imageUrl = productImageUrl(product); return <article className="qr-product-card" key={product.id}>{imageUrl && <button type="button" className="qr-product-photo-button" onClick={event => { event.preventDefault(); event.stopPropagation(); setImagePreview({ name: product.name, url: imageUrl }); }} aria-label={`Ampliar foto de ${product.name}`}><img className="qr-product-photo" src={imageUrl} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/></button>}<div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <div className={`qr-product-fraction-option ${product.categories?.slug === 'pizzas' && menu?.pizza_flavors_enabled ? 'is-pizza-option' : ''}`} key={fraction.id}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)}</b>{product.categories?.slug === 'pizzas' && menu?.pizza_flavors_enabled ? <button type="button" className="qr-pizza-config-button" onClick={() => setPizzaSelection({ product, fraction })}>Escolher sabores</button> : <QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/>}</div>)}</div> : <div className="qr-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>; })}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
         <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">
             <div><span className="qr-cart-title"><ShoppingCart size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
@@ -216,13 +234,13 @@ export default function PublicTableOrder({ qrToken }) {
           </header>
           <div className="qr-cart-items">
             {cart.length ? cart.map(item => {
-              const unitPrice = Number(item.fraction?.price ?? item.product.base_price);
+              const unitPrice = Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price);
               const imageUrl = productImageUrl(item.product);
               return <article className="qr-cart-item" key={item.key}>
                 {imageUrl ? <img className="qr-cart-photo" src={imageUrl} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> : <span className="qr-cart-item-photo-placeholder"><ShoppingCart size={18}/></span>}
                 <div className="qr-cart-item-content">
-                  <div className="qr-cart-item-heading"><b>{item.product.name}</b><button type="button" className="qr-cart-remove" onClick={() => removeItem(item.key)} aria-label="Remover item" title="Remover item"><Trash2 size={16}/></button></div>
-                  {item.fraction && <span className="qr-cart-item-variant">Tamanho &middot; {item.fraction.name}</span>}
+                  <div className="qr-cart-item-heading"><b>{item.flavors?.length ? item.flavors.map(flavor => flavor.product.name).join(' / ') : item.product.name}</b><button type="button" className="qr-cart-remove" onClick={() => removeItem(item.key)} aria-label="Remover item" title="Remover item"><Trash2 size={16}/></button></div>
+                  {item.fraction && <span className="qr-cart-item-variant">{item.flavors?.length ? item.fractionLabel : `Tamanho · ${item.fraction.name}`}</span>}
                   <div className="qr-cart-item-pricing"><span>{money(unitPrice)} <small>cada</small></span><strong>{money(unitPrice * item.quantity)}</strong></div>
                   <div className="qr-cart-item-bottom">
                     <QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => changeQuantity(item.key, quantity)}/>
@@ -243,6 +261,7 @@ export default function PublicTableOrder({ qrToken }) {
         </aside></div>}
       {!cartVisible && menu.table_status !== 'reservada' && <button type="button" className="qr-mobile-cart-button" onClick={() => document.getElementById('qr-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label="Abrir meu pedido"><ShoppingCart size={20}/><span>Meu pedido</span><b>{cartCount}</b><strong>{money(cartTotal)}</strong></button>}
     </>}
+    {pizzaSelection && <PizzaFlavorPicker products={allProducts} product={pizzaSelection.product} fraction={pizzaSelection.fraction} fractionPricing={menu?.fraction_pricing} onCancel={() => setPizzaSelection(null)} onConfirm={addPizzaSelection}/>}
     {imagePreview && <div className="public-product-image-preview-layer" onMouseDown={event => { if (event.target === event.currentTarget) setImagePreview(null); }}><section className="public-product-image-preview" role="dialog" aria-modal="true" aria-label={`Foto de ${imagePreview.name}`}><button type="button" className="public-product-image-preview-close" onClick={() => setImagePreview(null)} aria-label="Fechar foto"><X size={20}/></button><img src={imagePreview.url} alt={imagePreview.name}/><h2>{imagePreview.name}</h2></section></div>}
     <footer className="qr-order-footer">COZINFOOD · Atendimento digital à mesa</footer>
   </main>;

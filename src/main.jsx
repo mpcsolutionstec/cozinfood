@@ -6,6 +6,7 @@ import PublicTableOrder from './components/PublicTableOrder.jsx';
 import PublicDigitalMenu from './components/PublicDigitalMenu.jsx';
 import './tailwind.css';
 import './digital-menu.css';
+import './public-pizza-picker.css';
 import './product-menu-photos.css';
 import './styles.css';
 import './auth.css';

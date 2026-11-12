@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, ChefHat, ChevronDown, Clock3, Search, ShoppingCart, Sparkles, Utensils, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import QuantityControl from './QuantityControl';
+import PizzaFlavorPicker from './PizzaFlavorPicker';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const productImageUrl = product => {
@@ -21,6 +22,7 @@ export default function PublicDigitalMenu({ slug }) {
   const [sending, setSending] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [pizzaSelection, setPizzaSelection] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
@@ -42,12 +44,15 @@ export default function PublicDigitalMenu({ slug }) {
     return () => { alive = false; };
   }, [slug]);
 
-  const visibleProducts = useMemo(() => (menu?.categories || [])
-    .filter(item => category === 'all' || item.id === category)
-    .flatMap(item => item.products || [])
-    .filter(item => item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'))), [menu, category, search]);
+  const allProducts = useMemo(() => (menu?.categories || []).flatMap(item => (item.products || []).map(product => ({
+    ...product,
+    categories: { ...(product.categories || {}), name: item.name, slug: item.slug },
+  }))), [menu]);
+  const visibleProducts = useMemo(() => allProducts
+    .filter(item => category === 'all' || item.categories?.slug === menu?.categories?.find(entry => entry.id === category)?.slug)
+    .filter(item => item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'))), [allProducts, menu, category, search]);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = cart.reduce((sum, item) => sum + item.quantity * Number(item.fraction?.price ?? item.product.base_price), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.quantity * Number(item.unitPrice ?? item.fraction?.price ?? item.product.base_price), 0);
 
   const itemKey = (product, fraction = null) => `${product.id}:${fraction?.id || 'base'}`;
   const quantityFor = (product, fraction = null) => cart.find(item => item.key === itemKey(product, fraction))?.quantity || 0;
@@ -65,6 +70,18 @@ export default function PublicDigitalMenu({ slug }) {
     ? items.filter(item => item.key !== key)
     : items.map(item => item.key === key ? { ...item, quantity } : item));
 
+  const addPizzaSelection = selection => {
+    const flavorKey = selection.flavors.map(item => item.product.id).sort().join(',');
+    const key = `${selection.product.id}:${selection.fraction.id}:flavors:${flavorKey}`;
+    setCart(items => {
+      const existing = items.find(item => item.key === key);
+      return existing
+        ? items.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item)
+        : [...items, { ...selection, key, quantity: 1 }];
+    });
+    setPizzaSelection(null);
+  };
+
   const submitOrder = async event => {
     event.preventDefault();
     if (!cart.length) return;
@@ -74,7 +91,8 @@ export default function PublicDigitalMenu({ slug }) {
       p_slug: slug,
       p_customer_name: customer.name.trim(),
       p_customer_phone: customer.phone.replace(/\D/g, ''),
-      p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.fraction?.id || null, quantity: item.quantity })),
+      p_items: cart.map(item => ({ product_id: item.product.id, fraction_id: item.flavors?.length ? null : item.fraction?.id || null, quantity: item.quantity,
+        flavors: (item.flavors || []).map(flavor => ({ product_id: flavor.product.id, product_fraction_id: flavor.fraction.id, fraction: flavor.share })) })),
       p_notes: notes.trim(),
       p_request_id: crypto.randomUUID(),
     });
@@ -102,14 +120,24 @@ export default function PublicDigitalMenu({ slug }) {
 
     <section className="digital-menu-section" id="menu"><div className="digital-section-heading"><div><span className="digital-overline">NOSSO CARDÁPIO</span><h2>Escolha seus favoritos</h2><p>Preparados com cuidado, para deixar seu dia mais gostoso.</p></div><label className="digital-search"><Search size={16}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar no cardápio"/></label></div>
       <div className="digital-menu-content"><nav className="digital-category-nav"><button className={category === 'all' ? 'active' : ''} onClick={() => setCategory('all')}>Todos</button>{menu.categories.map(item => <button className={category === item.id ? 'active' : ''} onClick={() => setCategory(item.id)} key={item.id}>{item.name}</button>)}</nav>
-        <div className="digital-catalog-grid">{visibleProducts.map((product, index) => { const imageUrl = productImageUrl(product); return <article className="digital-product-card" key={product.id}>{imageUrl ? <button type="button" className={`digital-product-art digital-photo-trigger product-art-${index % 6} has-product-photo`} aria-label={`Ampliar foto de ${product.name}`} onClick={event => { event.preventDefault(); event.stopPropagation(); setImagePreview({ name: product.name, url: imageUrl }); }}><img src={imageUrl} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/></button> : <div className={`digital-product-art product-art-${index % 6}`} aria-hidden="true"><span>{product.categories?.name?.slice(0, 1) || '✦'}</span><i>✦</i><i>✦</i><i>✦</i></div>}<div className="digital-product-body"><div className="digital-product-title"><div><small>{product.categories?.name || 'Especialidade'}</small><h3>{product.name}</h3></div><span className="digital-rating">★ 4,9</span></div><p>{product.description || 'Uma das especialidades da casa, preparada na hora.'}</p>{product.fractions?.length ? <div className="digital-size-options">{product.fractions.map(fraction => <div className="digital-size-option" key={fraction.id}><span>{fraction.name}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="digital-add-product"><span>A partir de <b>{money(product.base_price)}</b></span><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</div></article>; })}{visibleProducts.length === 0 && <div className="digital-no-products"><Search size={20}/><b>Nenhum item encontrado</b><span>Tente outra busca ou escolha outra categoria.</span></div>}</div>
+        <div className="digital-catalog-grid">{visibleProducts.map((product, index) => { const imageUrl = productImageUrl(product); return <article className="digital-product-card" key={product.id}>
+          {imageUrl ? <button type="button" className={`digital-product-art digital-photo-trigger product-art-${index % 6} has-product-photo`} aria-label={`Ampliar foto de ${product.name}`} onClick={event => { event.preventDefault(); event.stopPropagation(); setImagePreview({ name: product.name, url: imageUrl }); }}><img src={imageUrl} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/></button> : <div className={`digital-product-art product-art-${index % 6}`} aria-hidden="true"><span>{product.categories?.name?.slice(0, 1) || '✦'}</span><i>✦</i><i>✦</i><i>✦</i></div>}
+          <div className="digital-product-body"><div className="digital-product-title"><div><small>{product.categories?.name || 'Especialidade'}</small><h3>{product.name}</h3></div><span className="digital-rating">★ 4,9</span></div><p>{product.description || 'Uma das especialidades da casa, preparada na hora.'}</p>
+            {product.fractions?.length ? <div className={`digital-size-options ${product.categories?.slug === 'pizzas' && menu?.pizza_flavors_enabled ? 'digital-pizza-sizes' : ''}`}>{product.fractions.map(fraction => <div className={`digital-size-option ${product.categories?.slug === 'pizzas' && menu?.pizza_flavors_enabled ? 'is-pizza-option' : ''}`} key={fraction.id}>
+              <span>{fraction.name}</span><b>{money(fraction.price)}</b>
+              {product.categories?.slug === 'pizzas' && menu?.pizza_flavors_enabled
+                ? <button type="button" className="digital-pizza-config-button" onClick={() => setPizzaSelection({ product, fraction })}>Escolher sabores</button>
+                : <QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/>}
+            </div>)}</div> : <div className="digital-add-product"><span>A partir de <b>{money(product.base_price)}</b></span><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}
+          </div></article>; })}{visibleProducts.length === 0 && <div className="digital-no-products"><Search size={20}/><b>Nenhum item encontrado</b><span>Tente outra busca ou escolha outra categoria.</span></div>}</div>
       </div>
     </section>
     <footer className="digital-public-footer"><a className="digital-logo" href="#top"><span><ChefHat size={17}/></span><b>{menu.restaurant_name}</b></a><span>Cardápio digital · COZINFOOD</span></footer>
 
     <button className="digital-mobile-cart" onClick={() => setCartOpen(true)}><ShoppingCart size={17}/><span>Ver pedido</span><b>{cartCount}</b><strong>{money(cartTotal)}</strong></button>
     {cartOpen && <div className="digital-cart-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCartOpen(false); }}><aside className="digital-cart-panel"><header><div><span className="digital-overline">SEU PEDIDO</span><h2>Quase lá!</h2></div><button onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={19}/></button></header><div className="digital-cart-items">{cart.length ? cart.map(item => <article key={item.key}><img className="digital-cart-photo" src={productImageUrl(item.product) || undefined} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> <div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><span>{money(item.fraction?.price ?? item.product.base_price)} cada</span></div><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => updateQuantity(item.key, quantity)}/></article>) : <div className="digital-cart-empty"><ShoppingCart size={23}/><b>Seu carrinho está vazio</b><span>Adicione algo gostoso do cardápio.</span></div>}</div><form className="digital-checkout" onSubmit={submitOrder}><label>Seu nome<input required maxLength={80} value={customer.name} onChange={event => setCustomer({ ...customer, name: event.target.value })} placeholder="Como podemos chamar você?"/></label><label>Telefone<input required type="tel" inputMode="tel" maxLength={20} value={customer.phone} onChange={event => setCustomer({ ...customer, phone: event.target.value })} placeholder="(11) 99999-9999"/></label><label>Observação <span>(opcional)</span><textarea maxLength={500} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Alguma preferência para seu pedido?"/></label><div className="digital-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="digital-submit" disabled={sending || !cart.length}>{sending ? 'Enviando pedido...' : 'Confirmar pedido'} <ArrowRight size={16}/></button><small>Retire no restaurante e pague no local.</small></form></aside></div>}
-    {cartOpen && <div className="digital-cart-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCartOpen(false); }}><aside className="digital-cart-panel"><header><div><span className="digital-overline">SEU PEDIDO</span><h2>Quase lá!</h2></div><button onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={19}/></button></header><div className="digital-cart-items">{cart.length ? cart.map(item => <article key={item.key}><img className="digital-cart-photo" src={productImageUrl(item.product) || undefined} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> <div><b>{item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><span>{money(item.fraction?.price ?? item.product.base_price)} cada</span></div><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => updateQuantity(item.key, quantity)}/></article>) : <div className="digital-cart-empty"><ShoppingCart size={23}/><b>Seu carrinho está vazio</b><span>Adicione algo gostoso do cardápio.</span></div>}</div><form className="digital-checkout" onSubmit={submitOrder}><label>Seu nome<input required maxLength={80} value={customer.name} onChange={event => setCustomer({ ...customer, name: event.target.value })} placeholder="Como podemos chamar você?"/></label><label>Telefone<input required type="tel" inputMode="tel" maxLength={20} value={customer.phone} onChange={event => setCustomer({ ...customer, phone: event.target.value })} placeholder="(11) 99999-9999"/></label><label>Observação <span>(opcional)</span><textarea maxLength={500} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Alguma preferência para seu pedido?"/></label><div className="digital-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="digital-submit" disabled={sending || !cart.length}>{sending ? 'Enviando pedido...' : 'Confirmar pedido'} <ArrowRight size={16}/></button><small>Retire no restaurante e pague no local.</small></form></aside></div>}
+    {cartOpen && <div className="digital-cart-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCartOpen(false); }}><aside className="digital-cart-panel"><header><div><span className="digital-overline">SEU PEDIDO</span><h2>Quase lá!</h2></div><button onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={19}/></button></header><div className="digital-cart-items">{cart.length ? cart.map(item => <article key={item.key}><img className="digital-cart-photo" src={productImageUrl(item.product) || undefined} alt="" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/> <div><b>{item.flavors?.length ? item.flavors.map(flavor => flavor.product.name).join(' / ') : item.product.name}{item.fraction ? ` · ${item.fraction.name}` : ''}</b><span>{money(item.unitPrice ?? item.fraction?.price ?? item.product.base_price)} cada</span></div><QuantityControl label={item.product.name} value={item.quantity} onChange={quantity => updateQuantity(item.key, quantity)}/></article>) : <div className="digital-cart-empty"><ShoppingCart size={23}/><b>Seu carrinho está vazio</b><span>Adicione algo gostoso do cardápio.</span></div>}</div><form className="digital-checkout" onSubmit={submitOrder}><label>Seu nome<input required maxLength={80} value={customer.name} onChange={event => setCustomer({ ...customer, name: event.target.value })} placeholder="Como podemos chamar você?"/></label><label>Telefone<input required type="tel" inputMode="tel" maxLength={20} value={customer.phone} onChange={event => setCustomer({ ...customer, phone: event.target.value })} placeholder="(11) 99999-9999"/></label><label>Observação <span>(opcional)</span><textarea maxLength={500} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Alguma preferência para seu pedido?"/></label><div className="digital-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="digital-submit" disabled={sending || !cart.length}>{sending ? 'Enviando pedido...' : 'Confirmar pedido'} <ArrowRight size={16}/></button><small>Retire no restaurante e pague no local.</small></form></aside></div>}
+    {pizzaSelection && <PizzaFlavorPicker products={allProducts} product={pizzaSelection.product} fraction={pizzaSelection.fraction} fractionPricing={menu?.fraction_pricing} onCancel={() => setPizzaSelection(null)} onConfirm={addPizzaSelection}/>}
     {imagePreview && <div className="public-product-image-preview-layer" onMouseDown={event => { if (event.target === event.currentTarget) setImagePreview(null); }}><section className="public-product-image-preview" role="dialog" aria-modal="true" aria-label={`Foto de ${imagePreview.name}`}><button type="button" className="public-product-image-preview-close" onClick={() => setImagePreview(null)} aria-label="Fechar foto"><X size={20}/></button><img src={imagePreview.url} alt={imagePreview.name}/><h2>{imagePreview.name}</h2></section></div>}
   </main>;
 }

@@ -5,6 +5,10 @@ import { useWaiterStore } from '../stores/useWaiterStore';
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const EMPTY_CART = Object.freeze([]);
+const sameFractionSize = (fraction, selected) => selected?.name
+  ? fraction?.name === selected.name
+  : fraction?.serves === selected?.serves;
+const fractionForProductSize = (product, selected) => (product.product_fractions || []).find(fraction => sameFractionSize(fraction, selected));
 const imageFor = product => product?.image_url || (product?.image_path && supabase ? supabase.storage.from('product-images').getPublicUrl(product.image_path).data.publicUrl : '');
 const statusText = { pendente: 'Na fila', em_preparo: 'Em preparo', pronto: 'Pronto', entregue: 'Entregue', cancelado: 'Cancelado' };
 
@@ -109,11 +113,11 @@ export default function OrderCart({ table, tables, profile, onBack, onNotice, on
   };
 
   const selectedFraction = customProduct?.product_fractions?.find(fraction => fraction.id === customSize);
-  const eligibleFlavors = useMemo(() => products.filter(product => product.categories?.slug === (customProduct?.categories?.slug || 'pizzas') && (product.product_fractions || []).some(fraction => fraction.id === customSize)), [products, customProduct, customSize]);
+  const eligibleFlavors = useMemo(() => products.filter(product => product.categories?.slug === (customProduct?.categories?.slug || 'pizzas') && fractionForProductSize(product, selectedFraction)), [products, customProduct, selectedFraction]);
   const selectedFlavors = flavorIds.map(id => eligibleFlavors.find(product => product.id === id)).filter(Boolean);
   const flavorBasePrice = selectedFlavors.length ? (fractionPricing === 'media_ponderada'
-    ? selectedFlavors.reduce((sum,product) => sum + Number(product.product_fractions.find(f => f.id === customSize)?.price || 0),0) / selectedFlavors.length
-    : Math.max(...selectedFlavors.map(product => Number(product.product_fractions.find(f => f.id === customSize)?.price || 0)))
+    ? selectedFlavors.reduce((sum,product) => sum + Number(fractionForProductSize(product, selectedFraction)?.price || 0),0) / selectedFlavors.length
+    : Math.max(...selectedFlavors.map(product => Number(fractionForProductSize(product, selectedFraction)?.price || 0)))
   ) : Number(selectedFraction?.price || 0);
   const border = borders.find(item => item.id === borderId);
   const selectedAdditions = additions.filter(item => additionIds.includes(item.id));
@@ -123,7 +127,7 @@ export default function OrderCart({ table, tables, profile, onBack, onNotice, on
     event.preventDefault();
     if (!customProduct || !selectedFraction || selectedFlavors.length !== flavorCount) return;
     const isPizza = customProduct.categories?.slug === 'pizzas';
-    const flavors = isPizza ? selectedFlavors.map(product => ({ product, fraction: product.product_fractions.find(f => f.id === customSize), share: 1 / flavorCount })) : [];
+    const flavors = isPizza ? selectedFlavors.map(product => ({ product, fraction: fractionForProductSize(product, selectedFraction), share: 1 / flavorCount })) : [];
     addItem(table.id, { product: customProduct, fraction: selectedFraction, flavors, border, additions: selectedAdditions.map(item => ({ ...item, quantity: 1 })), notes, unitPrice: customTotal, quantity: 1 });
     setCustomProduct(null);
   };
