@@ -5,12 +5,13 @@
 .digital-product-art.has-product-photo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   transition: transform .25s ease;
 }
 
 .digital-product-card:hover .digital-product-art.has-product-photo img {
-  transform: scale(1.035);
+  transform: none;
 }
 
 .digital-cart-items article {
