@@ -23,6 +23,8 @@ function playCallTone(context) {
 
 export default function TableServiceAlerts({ role }) {
   const [calls, setCalls] = useState([]);
+  const [dismissedIds, setDismissedIds] = useState(() => new Set());
+  const [inboxOpen, setInboxOpen] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const soundContext = useRef(null);
   const seenCallIds = useRef(new Set());
@@ -83,12 +85,18 @@ export default function TableServiceAlerts({ role }) {
 
   useEffect(() => {
     if (role !== 'admin' || !supabase) return undefined;
+    const toggleInbox = () => setInboxOpen(open => !open);
+    const closeOnEscape = event => { if (event.key === 'Escape') setInboxOpen(false); };
+    window.addEventListener('cozinfood:toggle-service-inbox', toggleInbox);
+    window.addEventListener('keydown', closeOnEscape);
     load();
     const channel = supabase.channel('admin-table-service-calls')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'table_service_calls' }, load)
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('cozinfood:toggle-service-inbox', toggleInbox);
+      window.removeEventListener('keydown', closeOnEscape);
       soundContext.current?.close();
       soundContext.current = null;
     };
@@ -99,8 +107,19 @@ export default function TableServiceAlerts({ role }) {
     if (!error) setCalls(current => current.filter(call => call.id !== id));
   };
 
-  if (!calls.length && !soundBlocked) return null;
-  return <aside className="table-service-alerts" aria-label="Chamados do salão" aria-live="assertive">{soundBlocked && <div className="table-service-sound-unlock"><BellRing size={16}/><span>Ative o som para ouvir os próximos chamados.</span><button onClick={enableSound}>Ativar som</button></div>}{calls.map(call => <div className="table-service-alert" role="status" key={call.id}>
-    <span className="table-service-alert-icon"><BellRing size={17}/></span><div><b>{call.kind === 'dividir_conta' ? 'Divisão de conta solicitada' : 'Gerente chamado'}</b><small>Mesa {call.table_number} · {new Date(call.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></div><button onClick={() => resolve(call.id)} aria-label="Marcar chamado como atendido"><Check size={17}/></button><button onClick={() => setCalls(current => current.filter(item => item.id !== call.id))} aria-label="Dispensar"><X size={16}/></button>
-  </div>)}</aside>;
+  const visibleCalls = calls.filter(call => !dismissedIds.has(call.id));
+  return <>
+    <aside className="table-service-alerts" aria-label="Chamados novos do salão" aria-live="assertive">
+      {soundBlocked && <div className="table-service-sound-unlock"><BellRing size={16}/><span>Ative o som para ouvir os próximos chamados.</span><button onClick={enableSound}>Ativar som</button></div>}
+      {visibleCalls.map(call => <div className="table-service-alert" role="status" key={call.id}>
+        <span className="table-service-alert-icon"><BellRing size={17}/></span><div><b>{call.kind === 'dividir_conta' ? 'Divisão de conta solicitada' : 'Gerente chamado'}</b><small>Mesa {call.table_number} · {new Date(call.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></div><button onClick={() => resolve(call.id)} aria-label="Marcar chamado como atendido"><Check size={17}/></button><button onClick={() => setDismissedIds(current => new Set([...current, call.id]))} aria-label="Dispensar aviso"><X size={16}/></button>
+      </div>)}
+    </aside>
+    {inboxOpen && <div className="table-service-inbox-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setInboxOpen(false); }}>
+      <section className="table-service-inbox" role="dialog" aria-modal="true" aria-labelledby="table-service-inbox-title">
+        <header><div><span className="table-service-alert-icon"><BellRing size={17}/></span><div><h2 id="table-service-inbox-title">Chamados da equipe</h2><small>{calls.length ? `${calls.length} chamado(s) aguardando atendimento` : 'Nenhum chamado pendente'}</small></div></div><button type="button" onClick={() => setInboxOpen(false)} aria-label="Fechar chamados"><X size={18}/></button></header>
+        <div className="table-service-inbox-list">{calls.length ? calls.map(call => <article className="table-service-inbox-item" key={call.id}><span className="table-service-alert-icon"><BellRing size={16}/></span><div><b>{call.kind === 'dividir_conta' ? 'Divisão de conta solicitada' : 'Gerente chamado'}</b><small>Mesa {call.table_number} · {new Date(call.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small></div><button type="button" onClick={() => resolve(call.id)} aria-label="Marcar chamado como atendido" title="Marcar como atendido"><Check size={17}/></button></article>) : <p className="table-service-inbox-empty">Os chamados dispensados ou atendidos não aparecem nesta lista.</p>}</div>
+      </section>
+    </div>}
+  </>;
 }
