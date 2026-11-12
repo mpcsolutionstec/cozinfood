@@ -482,4 +482,9 @@
   .qr-order-page {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
+
+  .qr-order-page .qr-product-copy b { font-size: 18px; }
+  .qr-order-page .qr-product-copy p { font-size: 15px; }
+  .qr-order-page .qr-product-fraction-option > span { font-size: 13px; }
+  .qr-order-page .qr-product-fraction-option > b { font-size: 14px; }
 }

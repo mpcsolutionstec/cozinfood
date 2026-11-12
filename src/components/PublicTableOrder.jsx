@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, XCircle } from 'lucide-react';
+import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, X, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import QuantityControl from './QuantityControl';
 
@@ -43,6 +43,7 @@ export default function PublicTableOrder({ qrToken }) {
   const [receipt, setReceipt] = useState(() => readSavedOrder().receipt || null);
   const [liveStatus, setLiveStatus] = useState(null);
   const [cartVisible, setCartVisible] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const loadMenu = async () => {
     setLoading(true);
@@ -207,7 +208,7 @@ export default function PublicTableOrder({ qrToken }) {
           <button onClick={() => { setReceipt(null); setLiveStatus(null); }}>Fazer outro pedido</button>
         </section>;
       })()}
-      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => <article className="qr-product-card" key={product.id}><img className="qr-product-photo" src={productImageUrl(product) || undefined} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/><div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <div className="qr-product-fraction-option" key={fraction.id}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="qr-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>)}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
+      {menu.table_status === 'reservada' ? <div className="qr-inline-error">Esta mesa está reservada. Chame um atendente para fazer o pedido.</div> : <div className="qr-order-layout"><section className="qr-menu-section" id="qr-menu"><nav className="qr-category-list"><button className={categoryId === 'all' ? 'active' : ''} onClick={() => setCategoryId('all')}>Tudo</button>{menu.categories.map(category => <button className={categoryId === category.id ? 'active' : ''} onClick={() => setCategoryId(category.id)} key={category.id}>{category.name}</button>)}</nav><div className="qr-products">{products.map(product => { const imageUrl = productImageUrl(product); return <article className="qr-product-card" key={product.id}>{imageUrl && <button type="button" className="qr-product-photo-button" onClick={event => { event.preventDefault(); event.stopPropagation(); setImagePreview({ name: product.name, url: imageUrl }); }} aria-label={`Ampliar foto de ${product.name}`}><img className="qr-product-photo" src={imageUrl} alt={product.name} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }}/></button>}<div className="qr-product-copy"><b>{product.name}</b><p>{product.description || product.categories?.name || ''}</p></div>{product.fractions?.length ? <div className="qr-product-fractions">{product.fractions.map(fraction => <div className="qr-product-fraction-option" key={fraction.id}><span>{fraction.name}{fraction.serves > 1 ? ` · serve ${fraction.serves}` : ''}</span><b>{money(fraction.price)}</b><QuantityControl compact label={`${product.name} ${fraction.name}`} value={quantityFor(product, fraction)} onChange={quantity => setItemQuantity(product, fraction, quantity)}/></div>)}</div> : <div className="qr-product-add"><b>{money(product.base_price)}</b><QuantityControl compact label={product.name} value={quantityFor(product)} onChange={quantity => setItemQuantity(product, null, quantity)}/></div>}</article>; })}{products.length === 0 && <div className="qr-empty">Ainda não há itens nesta categoria.</div>}</div></section>
         <aside className="qr-cart" id="qr-cart">
           <header className="qr-cart-header">
             <div><span className="qr-cart-title"><ShoppingCart size={19}/> Seu pedido</span><small>Confira os itens antes de enviar</small></div>
@@ -242,6 +243,7 @@ export default function PublicTableOrder({ qrToken }) {
         </aside></div>}
       {!cartVisible && menu.table_status !== 'reservada' && <button type="button" className="qr-mobile-cart-button" onClick={() => document.getElementById('qr-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label="Abrir meu pedido"><ShoppingCart size={20}/><span>Meu pedido</span><b>{cartCount}</b><strong>{money(cartTotal)}</strong></button>}
     </>}
+    {imagePreview && <div className="public-product-image-preview-layer" onMouseDown={event => { if (event.target === event.currentTarget) setImagePreview(null); }}><section className="public-product-image-preview" role="dialog" aria-modal="true" aria-label={`Foto de ${imagePreview.name}`}><button type="button" className="public-product-image-preview-close" onClick={() => setImagePreview(null)} aria-label="Fechar foto"><X size={20}/></button><img src={imagePreview.url} alt={imagePreview.name}/><h2>{imagePreview.name}</h2></section></div>}
     <footer className="qr-order-footer">COZINFOOD · Atendimento digital à mesa</footer>
   </main>;
 }
