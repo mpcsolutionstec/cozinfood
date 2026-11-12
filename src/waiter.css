@@ -5,3 +5,25 @@
 @media(min-width:621px) and (max-width:900px){.waiter-bottom-bar{padding-left:16px;padding-right:16px}.waiter-send{min-width:300px}}
 @media(prefers-reduced-motion:reduce){.waiter-app *{scroll-behavior:auto!important;transition:none!important}}
 .waiter-actions-modal{width:min(480px,100%)}.waiter-menu-action{width:100%;min-height:60px;padding:9px 11px;border:1px solid var(--wa-line);border-radius:12px;background:#fff;display:flex;align-items:center;gap:12px;text-align:left;color:#5d6c80;margin:9px 0}.waiter-menu-action>span b,.waiter-menu-action>span small{display:block}.waiter-menu-action>span b{font-size:13px;color:var(--wa-ink)}.waiter-menu-action>span small{font-size:10px;color:var(--wa-muted);margin-top:4px}.waiter-transfer-label{display:flex;align-items:flex-start;flex-direction:column;gap:7px;font-size:12px;font-weight:700;margin-top:18px}.waiter-transfer-label select{width:100%;height:46px;border:1px solid #dce3eb;border-radius:11px;padding:0 12px;background:white;color:var(--wa-ink)}
+
+.waiter-product-image{width:68px;height:68px;flex:0 0 68px;display:block;padding:0;border:0;border-radius:10px;background:#f6f7f9;overflow:hidden;cursor:zoom-in}
+.waiter-product-image img{display:block;width:100%;height:100%;object-fit:contain}
+.waiter-product-info{padding:0;border:0;background:transparent;text-align:left;color:var(--wa-ink)}
+.waiter-product-add{width:34px;height:34px;flex:0 0 34px;padding:0;border:0;border-radius:11px;background:#fff0e9;color:var(--wa-orange);display:grid;place-items:center}
+/* O catálogo do garçom prioriza leitura em telas pequenas sem ampliar demais a interface. */
+@media(max-width:620px){
+  .waiter-section-heading p,.waiter-service-head p,.waiter-catalog-top p{font-size:12px}
+  .waiter-status-strip button,.waiter-categories button{font-size:12px}
+  .waiter-product-main{gap:8px}
+  .waiter-product-image,.waiter-product-placeholder{width:56px;height:56px;flex-basis:56px}
+  .waiter-product-info{flex:1;min-width:0;align-self:stretch;padding:0;border:0;background:transparent;text-align:left;color:var(--wa-ink);display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px}
+  .waiter-product-info b{font-size:13px;line-height:1.3}
+  .waiter-product-info small{font-size:10px;line-height:1.4;max-height:42px}
+  .waiter-product-info strong{font-size:11px}
+  .waiter-product-add{width:31px;height:31px;flex:0 0 31px}
+  .waiter-send{font-size:12px}
+}
+.waiter-image-preview-layer{z-index:60}
+.waiter-image-preview{position:relative;width:min(720px,100%);max-height:calc(100dvh - 36px);overflow:auto;padding:52px 16px 18px;border-radius:18px;background:white;box-shadow:0 24px 80px #11182745;display:flex;flex-direction:column;align-items:center;gap:14px}
+.waiter-image-preview>img{display:block;max-width:100%;max-height:min(72dvh,680px);object-fit:contain;border-radius:12px}
+.waiter-image-preview h2{margin:0;text-align:center;font:800 16px Manrope,sans-serif;color:var(--wa-ink)}
