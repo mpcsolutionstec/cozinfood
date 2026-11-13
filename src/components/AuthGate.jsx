@@ -1,5 +1,5 @@
 import {createContext,useCallback,useContext,useEffect,useRef,useState} from 'react';
-import {ArrowRight,ChefHat,Eye,EyeOff,KeyRound,Mail,Phone,UserRound} from 'lucide-react';
+import {ArrowRight,ChefHat,Eye,EyeOff,KeyRound,Mail,Phone,ShieldCheck,UserRound} from 'lucide-react';
 import {supabase,isSupabaseConfigured} from '../lib/supabaseClient';
 import {normalizeBrazilPhone} from '../lib/phoneAuth';
 import {BRAND_LOGO} from '../branding';
