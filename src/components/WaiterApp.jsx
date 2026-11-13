@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bell, ChefHat, CircleDollarSign, LogOut, Plus, RefreshCw, Search, ShoppingBag, Wifi, WifiOff, X } from 'lucide-react';
+import { ArrowLeft, Bell, CircleDollarSign, LogOut, Plus, RefreshCw, Search, ShoppingBag, Wifi, WifiOff, X } from 'lucide-react';
+import { BRAND_LOGO } from '../branding';
 import { useAuth } from './AuthGate';
 import { supabase } from '../lib/supabaseClient';
 import { useTableStatus } from '../hooks/useTableStatus';
@@ -97,7 +98,7 @@ export default function WaiterApp({ onLogout }) {
 
   return <main className="waiter-app">
     <header className="waiter-topbar">
-      <div className="waiter-brand"><span><ChefHat size={20}/></span><div><b>COZINFOOD</b><small>Atendimento do garçom</small></div></div>
+      <div className="waiter-brand"><img className="waiter-brand-logo" src={BRAND_LOGO} alt=""/><div><b>COZINFOOD</b><small>Atendimento do garçom</small></div></div>
       <div className="waiter-top-actions"><span className={`waiter-connection ${online ? 'online' : 'offline'}`}>{online ? <Wifi size={15}/> : <WifiOff size={15}/>}<span>{online ? 'Conectado' : 'Offline'}</span></span>{pendingCount > 0 && <span className="waiter-pending">{pendingCount} na fila</span>}<button type="button" onClick={refreshTables} disabled={refreshing} className={refreshing ? 'is-refreshing' : ''} aria-label={refreshing ? 'Atualizando mesas' : 'Atualizar mesas'} title="Atualizar salão"><RefreshCw size={17}/></button><button type="button" onClick={onLogout} aria-label="Sair"><LogOut size={17}/></button></div>
     </header>
     {notice && <div className={`waiter-notice ${noticeIsError ? 'is-error' : ''}`} role="status">{notice}<button onClick={() => setNotice('')} aria-label="Fechar"><X size={16}/></button></div>}

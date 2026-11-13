@@ -617,3 +617,113 @@ body {
   background: #432a1e;
   color: #f5ebdc;
 }
+
+/* Logo oficial compartilhado pelas telas do app. */
+.brand-logo {
+  display: block;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--bk-cream-light);
+}
+
+.auth-mark-image {
+  display: block;
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  border-radius: 11px;
+  background: var(--bk-cream-light);
+}
+
+.auth-notice .auth-mark-image {
+  margin-bottom: 20px;
+}
+
+.auth-brand .auth-mark-image {
+  width: 72px;
+  height: 72px;
+}
+
+.auth-mobile-brand .auth-mark-image {
+  width: 54px;
+  height: 54px;
+}
+
+.digital-logo-image {
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  object-fit: contain;
+  border-radius: 9px;
+  background: var(--bk-cream-light);
+}
+
+.digital-logo-image-small {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+
+.digital-brand-mark {
+  width: 62px;
+  height: 62px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bk-cream-light);
+}
+
+.digital-brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.qr-brand-logo {
+  display: block;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--bk-cream-light);
+}
+
+.waiter-brand-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  object-fit: contain;
+  border-radius: 11px;
+  background: var(--bk-cream-light);
+}
+
+@media (max-width: 680px) {
+  .brand-logo {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .digital-public-header .digital-logo-image {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .qr-brand-logo {
+    width: 43px;
+    height: 43px;
+    flex-basis: 43px;
+  }
+
+  .waiter-brand-logo {
+    width: 43px;
+    height: 43px;
+    flex-basis: 43px;
+  }
+}

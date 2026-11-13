@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChefHat, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, X, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleCheck, Clock3, CookingPot, PackageCheck, Send, ShoppingCart, Trash2, Utensils, X, XCircle } from 'lucide-react';
+import { BRAND_LOGO } from '../branding';
 import { supabase } from '../lib/supabaseClient';
 import QuantityControl from './QuantityControl';
 import PizzaFlavorPicker from './PizzaFlavorPicker';
@@ -209,7 +210,7 @@ export default function PublicTableOrder({ qrToken }) {
 
   if (loading) return <main className="qr-order-page"><div className="qr-loading"><span className="auth-spinner"/> Abrindo cardápio...</div></main>;
 
-  return <main className="qr-order-page"><header className="qr-order-header"><div className="qr-brand"><span><ChefHat size={21}/></span><div><b>{menu?.restaurant_name || 'COZINFOOD'}</b><small>Cardápio digital</small></div></div>{menu && <div className="qr-table-badge"><Utensils size={15}/> Mesa {menu.table_number}</div>}</header>
+  return <main className="qr-order-page"><header className="qr-order-header"><div className="qr-brand"><img className="qr-brand-logo" src={BRAND_LOGO} alt=""/><div><b>{menu?.restaurant_name || 'COZINFOOD'}</b><small>Cardápio digital</small></div></div>{menu && <div className="qr-table-badge"><Utensils size={15}/> Mesa {menu.table_number}</div>}</header>
     {error && !menu ? <section className="qr-error"><h1>Não conseguimos abrir este cardápio</h1><p>{error}</p><button className="primary" onClick={loadMenu}>Tentar novamente</button></section> : menu && <>
       <section className="qr-welcome"><span>SEJA BEM-VINDO</span><h1>Faça seu pedido à mesa</h1><p>Escolha os itens. A equipe recebe seu pedido na hora.</p></section>
       {error && <div className="qr-inline-error" role="alert">{error}</div>}
