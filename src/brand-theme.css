@@ -341,3 +341,129 @@ body {
 :root[data-theme='dark'] .digital-public {
   background: #211914;
 }
+
+.overview-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overview-refresh {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--bk-border);
+  border-radius: 6px;
+  background: var(--bk-cream-light);
+  color: var(--bk-brown);
+  font: 600 11px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.overview-refresh:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.overview-refresh .is-spinning {
+  animation: overview-spin .8s linear infinite;
+}
+
+@keyframes overview-spin {
+  to { transform: rotate(360deg); }
+}
+
+.overview-error,
+.overview-inline-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #f1c8b8;
+  border-radius: 7px;
+  background: #fff0e9;
+  color: #8f2b16;
+  font-size: 11px;
+}
+
+.overview-error button {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--bk-red);
+  color: #fff;
+  font: 700 10px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.overview-empty,
+.overview-loading {
+  padding: 24px 10px;
+  color: var(--bk-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.mini-table {
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mini-table.awaiting {
+  border-color: #f1d787;
+  background: #fff8e6;
+  color: #9a6a04;
+}
+
+.mini-table.reserved {
+  border-color: #d8c9bc;
+  background: #f4eee8;
+  color: #756354;
+}
+
+.legend .awaiting-dot {
+  background: #e7a900;
+}
+
+.overview-bars .bar:not(.highlight) {
+  background: #ead8c3;
+}
+
+.overview-bar-labels {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.stat-foot .negative {
+  color: #b42318;
+  font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .overview-heading-actions {
+    gap: 5px;
+  }
+
+  .overview-refresh {
+    width: 36px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .overview-heading-actions .primary {
+    padding: 0 9px;
+  }
+
+  .overview-error {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
