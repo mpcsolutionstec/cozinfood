@@ -1,0 +1,343 @@
+:root {
+  --bk-brown: #502314;
+  --bk-brown-deep: #35170f;
+  --bk-red: #d62300;
+  --bk-orange: #e85d2a;
+  --bk-yellow: #fdbb30;
+  --bk-cream: #f5ebdc;
+  --bk-cream-light: #fffaf3;
+  --bk-border: #ead8c3;
+  --bk-muted: #887568;
+  --bk-focus: #d62300;
+  accent-color: var(--bk-red);
+}
+
+/* Admin e áreas internas */
+:root,
+body {
+  background-color: var(--bk-cream-light);
+  color: var(--bk-brown);
+}
+
+.sidebar {
+  background: var(--bk-brown-deep);
+}
+
+.restaurant {
+  border-color: #69402f;
+}
+
+.rest-icon,
+.nav-item:hover,
+.nav-item.selected {
+  background: #5b2a19;
+}
+
+.nav-item.selected svg {
+  color: var(--bk-yellow);
+}
+
+.nav-dot {
+  background: var(--bk-yellow);
+}
+
+.brand-icon,
+.primary,
+.service-submit-form .primary,
+.service-bottom-actions button:last-child:not(.service-split-action),
+.qr-cart form > .primary {
+  background: var(--bk-red);
+  box-shadow: 0 3px 8px #d6230026;
+}
+
+.primary:hover,
+.service-submit-form .primary:hover,
+.qr-cart form > .primary:hover {
+  background: #b91f04;
+}
+
+.text-button,
+.nav-item.selected svg,
+.summary-total b,
+.table-number,
+.page-heading h1 {
+  color: var(--bk-brown);
+}
+
+.filter.active,
+.choice.chosen,
+.mini-table.occupied,
+.floor-table.occupied {
+  border-color: #efb78a;
+  background: #fff2e5;
+}
+
+.flavor input,
+.checkbox input {
+  accent-color: var(--bk-red);
+}
+
+.stat-icon.orange,
+.managed-table-actions .table-service-action,
+.service-icon,
+.service-product-mark,
+.service-quantity button:last-child {
+  background: #fff0df;
+  color: var(--bk-red);
+}
+
+.bar.highlight {
+  background: var(--bk-red);
+}
+
+.page-heading h1,
+.crumb,
+.panel-head h2,
+.builder h2,
+.summary h2 {
+  color: var(--bk-brown);
+}
+
+/* Gestão de salão aberta dentro do admin */
+.service-panel {
+  border-color: var(--bk-border);
+  background: var(--bk-cream-light);
+}
+
+.service-header,
+.service-cart,
+.service-product,
+.qr-menu-section,
+.qr-cart,
+.qr-receipt,
+.qr-error {
+  border-color: var(--bk-border);
+}
+
+.service-header h2,
+.service-product > div:first-child b,
+.service-cart-item b,
+.qr-welcome h1,
+.qr-brand b,
+.qr-product-copy b,
+.qr-cart header h2 {
+  color: var(--bk-brown);
+}
+
+.service-icon,
+.qr-brand > span {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+.service-category-list button.active,
+.qr-category-list button.active {
+  border-color: var(--bk-red);
+  background: var(--bk-red);
+  color: #fff;
+}
+
+.service-variants button,
+.qr-product-fractions button {
+  border-color: var(--bk-border);
+}
+
+.service-variants button:hover,
+.qr-product-fractions button:hover {
+  border-color: #e9a274;
+  background: #fff4e8;
+}
+
+.service-add,
+.qr-pizza-config-button,
+.qr-mobile-cart-button {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+.service-existing-total b,
+.qr-receipt-total,
+.qr-cart-total strong {
+  color: var(--bk-brown);
+}
+
+.qr-order-page {
+  background: var(--bk-cream);
+  color: var(--bk-brown);
+}
+
+.qr-order-header,
+.qr-menu-section,
+.qr-cart,
+.qr-receipt,
+.qr-error,
+.qr-product-card {
+  border-color: var(--bk-border);
+}
+
+.qr-welcome > span {
+  color: var(--bk-red);
+}
+
+.qr-product-card,
+.qr-menu-section,
+.qr-cart,
+.qr-receipt,
+.qr-error {
+  background: var(--bk-cream-light);
+}
+
+/* Catálogo digital público e painel de gestão do cardápio */
+.dm-admin {
+  --dm-ink: var(--bk-brown);
+  --dm-muted: #887568;
+  --dm-border: var(--bk-border);
+  --dm-panel: var(--bk-cream-light);
+  --dm-soft: #fbf1e4;
+}
+
+.dm-admin-hero {
+  border-color: #efd4b8;
+  background: linear-gradient(112deg, #fff6e9 0%, #ffeed9 52%, #f8d9b9 100%);
+}
+
+.dm-eyebrow,
+.dm-section-kicker,
+.dm-hero-copy h1 em {
+  color: var(--bk-red);
+}
+
+.dm-primary-link,
+.dm-save-button {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+.dm-primary-link:hover,
+.dm-save-button:hover {
+  background: #b91f04;
+}
+
+.dm-filters button.selected {
+  border-color: #efc09c;
+  background: #fff0df;
+  color: var(--bk-red);
+}
+
+.digital-public {
+  --dp-ink: var(--bk-brown);
+  --dp-muted: #887568;
+  --dp-orange: var(--bk-red);
+  background: var(--bk-cream);
+  color: var(--bk-brown);
+}
+
+.digital-public-header,
+.digital-cart-panel {
+  border-color: var(--bk-border);
+  background: #fffaf3f2;
+}
+
+.digital-logo > span,
+.digital-brand-mark,
+.digital-unavailable button,
+.digital-explore,
+.digital-submit {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+.digital-hero {
+  background: linear-gradient(135deg, #fff7eb, #f5ebdc 70%, #f4dfc5);
+}
+
+.digital-hero-copy h1 em,
+.digital-overline,
+.digital-product-title h3,
+.digital-product-title small,
+.digital-add-product b,
+.digital-total b {
+  color: var(--bk-red);
+}
+
+.digital-hero-visual,
+.digital-menu-section,
+.digital-product-card,
+.digital-cart-panel {
+  border-color: var(--bk-border);
+}
+
+.digital-category-nav button.active,
+.digital-size-options button:hover {
+  border-color: #e9b98b;
+  background: #fff0df;
+  color: var(--bk-red);
+}
+
+.digital-size-options b,
+.digital-size-options button:hover b {
+  color: var(--bk-brown);
+}
+
+.digital-mobile-cart {
+  background: var(--bk-brown);
+  color: #fff;
+}
+
+.digital-public-footer {
+  border-color: var(--bk-border);
+  background: #f1e4d2;
+}
+
+/* PWA do garçom */
+.waiter-app {
+  --wa-ink: var(--bk-brown);
+  --wa-muted: #887568;
+  --wa-line: var(--bk-border);
+  --wa-orange: var(--bk-red);
+  background: var(--bk-cream);
+  color: var(--bk-brown);
+}
+
+.waiter-topbar {
+  background: var(--bk-brown-deep);
+}
+
+.waiter-brand > span,
+.waiter-primary,
+.waiter-send {
+  background: var(--bk-red);
+}
+
+.waiter-status-strip button.active,
+.waiter-categories button.active {
+  border-color: #efb78a;
+  background: #fff0df;
+  color: var(--bk-red);
+}
+
+.waiter-product-info strong,
+.waiter-custom-total b {
+  color: var(--bk-red);
+}
+
+/* O tema escuro continua disponível, com os novos acentos de marca. */
+:root[data-theme='dark'] .primary,
+:root[data-theme='dark'] .service-submit-form .primary,
+:root[data-theme='dark'] .qr-cart form > .primary,
+:root[data-theme='dark'] .dm-primary-link,
+:root[data-theme='dark'] .dm-save-button,
+:root[data-theme='dark'] .digital-submit,
+:root[data-theme='dark'] .waiter-primary,
+:root[data-theme='dark'] .waiter-send {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+:root[data-theme='dark'] .qr-order-page {
+  background: #211914;
+}
+
+:root[data-theme='dark'] .digital-public {
+  background: #211914;
+}

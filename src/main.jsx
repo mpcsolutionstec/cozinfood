@@ -22,6 +22,7 @@ import './theme.css';
 import './pos.css';
 import './products.css';
 import './quantity-control.css';
+import './brand-theme.css';
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}), { once: true });
 }
