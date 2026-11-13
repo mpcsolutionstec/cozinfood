@@ -467,3 +467,153 @@ body {
     flex-direction: column;
   }
 }
+
+/* Login e fluxo de configuração da conta */
+.auth-page,
+.auth-loading {
+  background: var(--bk-cream);
+  color: var(--bk-brown);
+}
+
+.auth-layout,
+.auth-notice {
+  border-color: var(--bk-border);
+  background: var(--bk-cream-light);
+}
+
+.auth-brand-panel {
+  background: var(--bk-brown-deep);
+}
+
+.auth-mark {
+  background: var(--bk-red);
+}
+
+.auth-eyebrow {
+  color: var(--bk-yellow);
+}
+
+.auth-feature svg {
+  color: var(--bk-yellow);
+}
+
+.auth-form-wrap h1,
+.auth-notice h1 {
+  color: var(--bk-brown);
+}
+
+.auth-form-panel {
+  background: var(--bk-cream-light);
+}
+
+.auth-form label {
+  color: var(--bk-brown);
+}
+
+.auth-switch {
+  background: #f1e4d2;
+}
+
+.auth-switch button.active {
+  background: var(--bk-red);
+  color: #fff;
+  box-shadow: 0 1px 4px #50231424;
+}
+
+.auth-input {
+  border-color: var(--bk-border);
+  background: #fff;
+}
+
+.auth-input:focus-within {
+  border-color: var(--bk-red);
+  box-shadow: 0 0 0 3px #d6230018;
+}
+
+.auth-input input {
+  color: var(--bk-brown);
+}
+
+.auth-submit {
+  background: var(--bk-red);
+}
+
+.auth-submit:hover {
+  background: #b91f04;
+}
+
+.auth-secondary,
+.auth-legal b {
+  color: var(--bk-brown);
+}
+
+.auth-method-switch button.active {
+  border-color: #e9b98b;
+  background: #fff0df;
+  color: var(--bk-red);
+}
+
+.auth-resend {
+  color: var(--bk-red);
+}
+
+.auth-help {
+  border: 1px solid var(--bk-border);
+  background: #f5ebdc;
+  color: #6d5141;
+}
+
+.auth-spinner {
+  border-top-color: var(--bk-red);
+}
+
+:root[data-theme='dark'] .auth-page,
+:root[data-theme='dark'] .auth-loading {
+  background: #211914;
+  color: #f5ebdc;
+}
+
+:root[data-theme='dark'] .auth-layout,
+:root[data-theme='dark'] .auth-notice,
+:root[data-theme='dark'] .auth-form-panel {
+  border-color: #684331;
+  background: #302119;
+}
+
+:root[data-theme='dark'] .auth-form-wrap h1,
+:root[data-theme='dark'] .auth-notice h1,
+:root[data-theme='dark'] .auth-form label,
+:root[data-theme='dark'] .auth-secondary,
+:root[data-theme='dark'] .auth-legal b {
+  color: #f5ebdc;
+}
+
+:root[data-theme='dark'] .auth-switch {
+  background: #432a1e;
+}
+
+:root[data-theme='dark'] .auth-switch button.active {
+  background: var(--bk-red);
+  color: #fff;
+}
+
+:root[data-theme='dark'] .auth-input,
+:root[data-theme='dark'] .auth-method-switch button {
+  border-color: #684331;
+  background: #211914;
+}
+
+:root[data-theme='dark'] .auth-input input {
+  color: #f5ebdc;
+}
+
+:root[data-theme='dark'] .auth-method-switch button.active {
+  background: #54291b;
+  color: #ffcf69;
+}
+
+:root[data-theme='dark'] .auth-help {
+  border-color: #684331;
+  background: #432a1e;
+  color: #f5ebdc;
+}
