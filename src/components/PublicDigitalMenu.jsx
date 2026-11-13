@@ -112,7 +112,7 @@ export default function PublicDigitalMenu({ slug }) {
     setSending(false);
   };
 
-  if (loading) return <main className="digital-public"><div className="digital-loading"><span className="auth-spinner"/> Abrindo o cardápio...</div></main>;
+  if (loading) return <main className="digital-public"><div className="digital-loading public-loading-splash" role="status"><img className="public-splash-logo" src={BRAND_LOGO} alt="Logo COZINFOOD"/><span className="public-splash-caption"><span className="auth-spinner"/>Abrindo o cardápio...</span></div></main>;
   if (error && !menu) return <main className="digital-public"><section className="digital-unavailable"><span className="digital-brand-mark"><img src={BRAND_LOGO} alt="Logo COZINFOOD"/></span><h1>Cardápio temporariamente indisponível</h1><p>{error}</p><button onClick={() => window.location.reload()}>Tentar novamente</button></section></main>;
 
   return <main className="digital-public">

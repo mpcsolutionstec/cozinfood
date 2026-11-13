@@ -727,3 +727,34 @@ body {
     flex-basis: 43px;
   }
 }
+
+.public-loading-splash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  background: var(--bk-cream);
+  color: var(--bk-brown);
+}
+
+.public-splash-logo {
+  display: block;
+  width: clamp(132px, 38vw, 176px);
+  height: clamp(132px, 38vw, 176px);
+  object-fit: contain;
+}
+
+.public-splash-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--bk-muted);
+  font-size: 12px;
+}
+
+:root[data-theme='dark'] .public-loading-splash {
+  background: #211914;
+  color: #f5ebdc;
+}

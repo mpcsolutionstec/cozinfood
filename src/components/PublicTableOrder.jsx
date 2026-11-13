@@ -208,7 +208,7 @@ export default function PublicTableOrder({ qrToken }) {
     setSending(false);
   };
 
-  if (loading) return <main className="qr-order-page"><div className="qr-loading"><span className="auth-spinner"/> Abrindo cardápio...</div></main>;
+  if (loading) return <main className="qr-order-page"><div className="qr-loading public-loading-splash" role="status"><img className="public-splash-logo" src={BRAND_LOGO} alt="Logo COZINFOOD"/><span className="public-splash-caption"><span className="auth-spinner"/>Abrindo cardápio...</span></div></main>;
 
   return <main className="qr-order-page"><header className="qr-order-header"><div className="qr-brand"><img className="qr-brand-logo" src={BRAND_LOGO} alt=""/><div><b>{menu?.restaurant_name || 'COZINFOOD'}</b><small>Cardápio digital</small></div></div>{menu && <div className="qr-table-badge"><Utensils size={15}/> Mesa {menu.table_number}</div>}</header>
     {error && !menu ? <section className="qr-error"><h1>Não conseguimos abrir este cardápio</h1><p>{error}</p><button className="primary" onClick={loadMenu}>Tentar novamente</button></section> : menu && <>
