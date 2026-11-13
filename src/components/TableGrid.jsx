@@ -11,6 +11,14 @@ const elapsed = value => {
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 };
 
+function DiningTableIcon({ size = 22 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 6V4.8a3 3 0 0 1 6 0V6M8 7h8v1.3a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7Z"/>
+    <ellipse cx="12" cy="12" rx="5.2" ry="2.2"/>
+    <path d="M12 14.2V19m-3 2h6m-8-9H4.5v2.2a2 2 0 0 0 2 2H8m8-4h1.5v2.2a2 2 0 0 1-2 2H16M9 19v2m6-2v2"/>
+  </svg>;
+}
+
 export default function TableGrid({ tables, loading, error, onRefresh, onSelect, onAction }) {
   const [orders, setOrders] = useState({});
   const [guestTable, setGuestTable] = useState(null);
@@ -51,7 +59,7 @@ export default function TableGrid({ tables, loading, error, onRefresh, onSelect,
       const order = orders[table.id];
       const status = table.status || 'livre';
       return <button key={table.id} className={`waiter-table-card ${status}`} onClick={() => choose(table)} disabled={status === 'reservada'}>
-        <div className="waiter-table-card-top"><span className="waiter-table-icon"><Armchair size={23}/></span><span className={`waiter-state-pill ${status}`}>{statusText[status] || 'Livre'}</span></div>
+        <div className="waiter-table-card-top"><span className="waiter-table-icon"><DiningTableIcon/></span><span className={`waiter-state-pill ${status}`}>{statusText[status] || 'Livre'}</span></div>
         <div className="waiter-table-card-title"><small>MESA</small><strong>{table.number}</strong></div>
         <div className="waiter-table-seats"><Users size={14}/><span>{table.capacity || 4} lugares</span></div>
         {status !== 'livre' && status !== 'reservada' && <div className="waiter-table-summary"><div><small>CONTA PARCIAL</small><b>{money(table.current_total)}</b></div><span className="waiter-elapsed"><Clock3 size={13}/>{elapsed(order?.created_at) || 'Em andamento'}</span></div>}
