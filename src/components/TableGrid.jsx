@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Armchair, Clock3, RefreshCw, Users, X } from 'lucide-react';
+import { Armchair, ArrowUpRight, Clock3, RefreshCw, Users, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useWaiterStore } from '../stores/useWaiterStore';
 
@@ -52,11 +52,12 @@ export default function TableGrid({ tables, loading, error, onRefresh, onSelect,
       const status = table.status || 'livre';
       return <button key={table.id} className={`waiter-table-card ${status}`} onClick={() => choose(table)} disabled={status === 'reservada'}>
         <div className="waiter-table-card-top"><span className="waiter-table-icon"><Armchair size={23}/></span><span className={`waiter-state-pill ${status}`}>{statusText[status] || 'Livre'}</span></div>
-        <strong>Mesa {table.number}</strong><span className="waiter-table-seats"><Users size={14}/> {table.capacity || 4} lugares</span>
-        {status !== 'livre' && status !== 'reservada' && <><b className="waiter-table-total">{money(table.current_total)}</b><span className="waiter-elapsed"><Clock3 size={13}/>{elapsed(order?.created_at)}</span></>}
+        <div className="waiter-table-card-title"><small>MESA</small><strong>{table.number}</strong></div>
+        <div className="waiter-table-seats"><Users size={14}/><span>{table.capacity || 4} lugares</span></div>
+        {status !== 'livre' && status !== 'reservada' && <div className="waiter-table-summary"><div><small>CONTA PARCIAL</small><b>{money(table.current_total)}</b></div><span className="waiter-elapsed"><Clock3 size={13}/>{elapsed(order?.created_at) || 'Em andamento'}</span></div>}
         {status === 'aguardando_conta' && <small className="waiter-checkout-hint">Caixa solicitado</small>}
         {status === 'reservada' && <small>Indisponível para atendimento</small>}
-        {status !== 'reservada' && <span className="waiter-open-hint">{status === 'livre' ? 'Iniciar atendimento' : 'Abrir comanda'} →</span>}
+        {status !== 'reservada' && <span className="waiter-open-hint">{status === 'livre' ? 'Iniciar atendimento' : 'Abrir comanda'}<ArrowUpRight size={15}/></span>}
       </button>;
     })}</div>}
     {guestTable && <div className="waiter-modal-layer" onMouseDown={event => { if (event.target === event.currentTarget) setGuestTable(null); }}><form className="waiter-modal" onSubmit={startService}>

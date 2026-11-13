@@ -32,3 +32,25 @@
 .waiter-image-preview h2{margin:0;text-align:center;font:800 16px Manrope,sans-serif;color:var(--wa-ink)}
 .waiter-top-actions>button:disabled{opacity:.55;cursor:wait}.waiter-top-actions>button.is-refreshing svg{animation:waiter-refresh-spin .8s linear infinite}@keyframes waiter-refresh-spin{to{transform:rotate(360deg)}}
 .waiter-notice.is-error{background:#fff0ed;color:#ad4436;border-bottom-color:#f3d1c8}
+
+/* Visual refinement for the waiter's floor map */
+.waiter-table-card{position:relative;isolation:isolate;overflow:hidden;min-height:208px;padding:16px;background:linear-gradient(145deg,#fff 0%,#fbfcfe 100%);border-radius:18px;box-shadow:0 5px 16px #1b2c4110,0 1px 2px #1b2c4108}
+.waiter-table-card::before{content:"";position:absolute;z-index:-1;top:0;left:0;right:0;height:4px;background:#28a879}
+.waiter-table-card:hover{transform:translateY(-2px);box-shadow:0 9px 22px #1b2c4118;border-color:#cbd5e1}
+.waiter-table-card:focus-visible{outline:3px solid #f36f3d70;outline-offset:2px}
+.waiter-table-card.ocupada{border-color:#f0c8ba;background:linear-gradient(145deg,#fff 0%,#fff8f5 100%)}
+.waiter-table-card.ocupada::before{background:#e86542}
+.waiter-table-card.aguardando_conta{border-color:#f0d58c;background:linear-gradient(145deg,#fff 0%,#fffaf0 100%)}
+.waiter-table-card.aguardando_conta::before{background:#dfa92e}
+.waiter-table-icon{width:40px;height:40px;background:#eaf7f0;color:#16845f}
+.waiter-state-pill{display:inline-flex;align-items:center;gap:6px}
+.waiter-state-pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.waiter-table-card-title{display:flex;align-items:baseline;gap:7px;margin:1px 0 3px}
+.waiter-table-card-title small{font-size:9px;font-weight:800;letter-spacing:.1em;color:#8490a1}
+.waiter-table-card-title strong{font:800 21px Manrope,sans-serif;letter-spacing:-.03em}
+.waiter-table-summary{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:6px;margin-top:11px;padding:9px 10px;border:1px solid #f2ddd5;border-radius:12px;background:#fff}
+.waiter-table-summary>div small{display:block;font-size:8px;font-weight:800;letter-spacing:.08em;color:#8b95a4}
+.waiter-table-summary>div b{display:block;margin-top:3px;font:800 16px Manrope,sans-serif;color:#bd512e}
+.waiter-table-summary .waiter-elapsed{white-space:nowrap;font-size:10px}
+.waiter-open-hint{width:100%;display:flex;align-items:center;justify-content:space-between;padding-top:11px}
+@media(max-width:620px){.waiter-table-card{min-height:183px;padding:12px;border-radius:15px}.waiter-table-icon{width:37px;height:37px}.waiter-table-summary{padding:8px;margin-top:9px}.waiter-table-summary>div b{font-size:14px}.waiter-table-summary .waiter-elapsed{font-size:9px}.waiter-table-card-title strong{font-size:19px}}
