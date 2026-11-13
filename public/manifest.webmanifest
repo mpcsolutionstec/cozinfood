@@ -1,14 +1,19 @@
 {
-  "name": "COZINFOOD Garçom",
+  "id": "./",
+  "name": "COZINFOOD",
   "short_name": "COZINFOOD",
-  "description": "Atendimento móvel do salão e envio de pedidos para produção.",
+  "description": "Gestao de restaurante, atendimento, caixa e cozinha.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#f5ebdc",
   "theme_color": "#502314",
+  "categories": ["business", "food"],
   "icons": [
-    { "src": "./waiter-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "./logo/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./logo/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./logo/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

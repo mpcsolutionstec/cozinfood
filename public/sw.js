@@ -1,6 +1,6 @@
-const CACHE = 'cozinfood-shell-v3';
+const CACHE = 'cozinfood-shell-v4';
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./', './manifest.webmanifest', './waiter-icon.svg', './logo/Logo_CozinFood.png'])));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./', './manifest.webmanifest', './logo/pwa-192.png', './logo/pwa-512.png', './logo/Logo_CozinFood.png'])));
   self.skipWaiting();
 });
 self.addEventListener('activate', event => {
@@ -17,7 +17,7 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match('./')));
     return;
   }
-  if (url.pathname.includes('/assets/') || url.pathname.includes('/logo/') || url.pathname.endsWith('/waiter-icon.svg')) event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
+  if (url.pathname.includes('/assets/') || url.pathname.includes('/logo/')) event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
     const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(request, copy)); return response;
   })));
 });
