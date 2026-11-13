@@ -54,3 +54,9 @@
 .waiter-table-summary .waiter-elapsed{white-space:nowrap;font-size:10px}
 .waiter-open-hint{width:100%;display:flex;align-items:center;justify-content:space-between;padding-top:11px}
 @media(max-width:620px){.waiter-table-card{min-height:183px;padding:12px;border-radius:15px}.waiter-table-icon{width:37px;height:37px}.waiter-table-summary{padding:8px;margin-top:9px}.waiter-table-summary>div b{font-size:14px}.waiter-table-summary .waiter-elapsed{font-size:9px}.waiter-table-card-title strong{font-size:19px}}
+.waiter-table-card{min-height:244px}
+.waiter-table-art{width:76px;height:76px;flex:0 0 76px;display:grid;place-items:center;overflow:hidden;border-radius:16px;background:#eaf7f0}
+.waiter-table-art img{display:block;width:100%;height:100%;padding:3px;object-fit:contain;mix-blend-mode:multiply}
+.waiter-table-card.ocupada .waiter-table-art{background:#fff0e9}
+.waiter-table-card.aguardando_conta .waiter-table-art{background:#fff5d8}
+@media(max-width:620px){.waiter-table-card{min-height:226px}.waiter-table-art{width:62px;height:62px;flex-basis:62px}.waiter-table-card-top{margin-bottom:7px}}
