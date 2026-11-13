@@ -60,3 +60,5 @@
 .waiter-table-card.ocupada .waiter-table-art{background:#fff0e9}
 .waiter-table-card.aguardando_conta .waiter-table-art{background:#fff5d8}
 @media(max-width:620px){.waiter-table-card{min-height:226px}.waiter-table-art{width:62px;height:62px;flex-basis:62px}.waiter-table-card-top{margin-bottom:7px}}
+.waiter-modal-icon.waiter-modal-table-image{width:64px;height:64px;overflow:hidden;border-radius:18px;background:#eaf7f0;color:inherit}
+.waiter-modal-table-image img{display:block;width:100%;height:100%;padding:2px;object-fit:contain;mix-blend-mode:multiply}

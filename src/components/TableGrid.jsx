@@ -62,7 +62,7 @@ export default function TableGrid({ tables, loading, error, onRefresh, onSelect,
       </button>;
     })}</div>}
     {guestTable && <div className="waiter-modal-layer" onMouseDown={event => { if (event.target === event.currentTarget) setGuestTable(null); }}><form className="waiter-modal" onSubmit={startService}>
-      <button type="button" className="waiter-modal-close" onClick={() => setGuestTable(null)} aria-label="Fechar"><X size={18}/></button><span className="waiter-modal-icon"><Armchair size={23}/></span><h2>Mesa {guestTable.number}</h2><p>Quantas pessoas estão na mesa? Você pode deixar o padrão.</p><label><Users size={17}/> Clientes<input type="number" min="1" max="30" value={guestCount} onChange={event => setGuestCount(event.target.value)} inputMode="numeric"/></label><button className="waiter-primary">Começar atendimento</button>
+      <button type="button" className="waiter-modal-close" onClick={() => setGuestTable(null)} aria-label="Fechar"><X size={18}/></button><span className="waiter-modal-icon waiter-modal-table-image"><img src={TABLE_IMAGE} alt=""/></span><h2>Mesa {guestTable.number}</h2><p>Quantas pessoas estão na mesa? Você pode deixar o padrão.</p><label><Users size={17}/> Clientes<input type="number" min="1" max="30" value={guestCount} onChange={event => setGuestCount(event.target.value)} inputMode="numeric"/></label><button className="waiter-primary">Começar atendimento</button>
     </form></div>}
   </section>;
 }
