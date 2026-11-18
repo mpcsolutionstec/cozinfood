@@ -1,6 +1,6 @@
-const CACHE = 'cozinfood-shell-v5';
+const CACHE = 'cozinfood-shell-v6';
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./', './manifest.webmanifest', './logo/brand-mark-192.png', './logo/brand-mark-512.png', './logo/Logo_CozinFood.png'])));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./', './manifest.webmanifest', './logo/logo-192.png', './logo/logo-512.png'])));
   self.skipWaiting();
 });
 self.addEventListener('activate', event => {
