@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, KeyRound, Mail, Phone, RefreshCw, Search, ShieldCheck, SlidersHorizontal, UserPlus, UsersRound, X } from 'lucide-react';
+import { Check, Eye, EyeOff, KeyRound, Mail, Phone, RefreshCw, Search, ShieldCheck, SlidersHorizontal, UserPlus, UsersRound, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './staff-manager.css';
 
@@ -20,6 +20,13 @@ const permissionOptions = [
   ['finance.cash.reinforcement','Registrar reforço','Registra entrada de dinheiro no caixa.'],
 ];
 const emptyInvite = { full_name: '', email: '', phone: '', role: 'garcom', username: '', password: '' };
+const formatPhone = value => {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : '';
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
 
 async function getFunctionErrorMessage(error) {
   const response = error?.context;
@@ -41,6 +48,7 @@ export default function StaffManager({ profile }) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState(emptyInvite);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [showInitialPassword, setShowInitialPassword] = useState(false);
   const [permissionUserId, setPermissionUserId] = useState('');
   const [cashierCredentials, setCashierCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
@@ -170,8 +178,8 @@ export default function StaffManager({ profile }) {
     <section className="staff-roles"><h2>Regras iniciais por funcao</h2><div>{Object.entries(roleInfo).map(([role,info]) => <article key={role}><span className={`staff-stat-icon ${role}`}>{role==='admin'?<ShieldCheck size={17}/>:role==='caixa'?<span>R$</span>:<UsersRound size={17}/>}</span><div><b>{info.label}</b><small>{info.detail}</small></div></article>)}</div></section>
     {inviteOpen && <div className="staff-modal-backdrop" onMouseDown={event => { if(event.target===event.currentTarget&&!inviteBusy)setInviteOpen(false); }}><section className="staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-invite-title"><header><div><span className="staff-modal-icon"><UserPlus size={19}/></span><div><h2 id="staff-invite-title">Novo usuario</h2><p>{invite.role==='caixa'?'Acesso criado sem e-mail. O caixa entra com usuario e senha.':'O usuario recebera um convite por e-mail para criar a senha.'}</p></div></div><button type="button" onClick={() => setInviteOpen(false)} disabled={inviteBusy} aria-label="Fechar"><X size={18}/></button></header>
       <form onSubmit={inviteMember}><label>Nome completo<input autoFocus value={invite.full_name} minLength={2} maxLength={80} onChange={event => setInvite(current => ({...current,full_name:event.target.value}))} required/></label>
-        {invite.role === 'caixa' ? <><label>Usuario para entrar no PDV<input autoComplete="username" value={invite.username} minLength={3} maxLength={30} pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,29}" placeholder="Ex.: caixa01" onChange={event => setInvite(current => ({...current,username:event.target.value.toLowerCase()}))} required/><small className="staff-field-hint">Use letras sem acento, numeros, ponto, hifen ou sublinhado.</small></label><label>Senha inicial<input type="password" autoComplete="new-password" value={invite.password} minLength={8} maxLength={72} onChange={event => setInvite(current => ({...current,password:event.target.value}))} required/><small className="staff-field-hint">Entregue a senha diretamente ao operador. Ela nao sera enviada por e-mail.</small></label></> : <label>E-mail<input type="email" autoComplete="email" value={invite.email} onChange={event => setInvite(current => ({...current,email:event.target.value}))} required/></label>}
-        <label>Telefone <small>Opcional</small><input type="tel" autoComplete="tel" value={invite.phone} maxLength={30} placeholder="(11) 99999-9999" onChange={event => setInvite(current => ({...current,phone:event.target.value}))}/></label>
+        {invite.role === 'caixa' ? <><label>Usuario para entrar no PDV<input autoComplete="username" value={invite.username} minLength={3} maxLength={30} pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,29}" placeholder="Ex.: caixa01" onChange={event => setInvite(current => ({...current,username:event.target.value.toLowerCase()}))} required/><small className="staff-field-hint">Use letras sem acento, numeros, ponto, hifen ou sublinhado.</small></label><label>Senha inicial<span className="staff-password-input"><input type={showInitialPassword ? 'text' : 'password'} autoComplete="new-password" value={invite.password} minLength={8} maxLength={72} onChange={event => setInvite(current => ({...current,password:event.target.value}))} required/><button type="button" aria-label={showInitialPassword ? 'Ocultar senha' : 'Mostrar senha'} onClick={() => setShowInitialPassword(value => !value)}>{showInitialPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></span><small className="staff-field-hint">Entregue a senha diretamente ao operador. Ela nao sera enviada por e-mail.</small></label></> : <label>E-mail<input type="email" autoComplete="email" value={invite.email} onChange={event => setInvite(current => ({...current,email:event.target.value}))} required/></label>}
+        <label>Telefone <small>Opcional</small><input type="tel" autoComplete="tel" inputMode="numeric" value={invite.phone} maxLength={15} placeholder="(11) 99999-9999" onChange={event => setInvite(current => ({...current,phone:formatPhone(event.target.value)}))}/></label>
         <label>Funcao<select value={invite.role} onChange={event => setInvite(current => ({...current,role:event.target.value}))}>{Object.entries(roleInfo).map(([role,info]) => <option key={role} value={role}>{info.label} - {info.detail}</option>)}</select></label>
         <div className="staff-invite-note">{invite.role==='caixa'?'A conta sera criada pelo administrador, sem disparar mensagem. O operador podera entrar com usuario e senha.':'O Supabase enviara um link para confirmar o e-mail e definir a senha.'}</div>{error && <div className="staff-error" role="alert">{error}</div>}
         <footer><button type="button" className="staff-cancel" onClick={() => setInviteOpen(false)} disabled={inviteBusy}>Cancelar</button><button className="primary" disabled={inviteBusy}>{inviteBusy ? 'Criando...' : invite.role === 'caixa' ? <><KeyRound size={15}/> Criar acesso</> : <><Mail size={15}/> Enviar convite</>}</button></footer>
