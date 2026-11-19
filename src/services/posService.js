@@ -24,9 +24,10 @@ export const openPosCashRegister = openingAmount => unwrap(supabase.rpc('pos_ope
   p_opening_amount: Number(openingAmount || 0),
 }));
 
-export const closePosCashRegister = (registerId, closingAmount) => unwrap(supabase.rpc('pos_close_cash_register', {
+export const closePosCashRegister = (registerId, closingBreakdown, justification = '') => unwrap(supabase.rpc('close_cash_register_blind', {
   p_cash_register_id: registerId,
-  p_closing_amount: Number(closingAmount || 0),
+  p_counted_breakdown: Object.fromEntries(Object.entries(closingBreakdown).map(([method, amount]) => [method, Number(amount || 0)])),
+  p_justification: justification,
 }));
 
 export const createPosPix = input => unwrap(supabase.functions.invoke('create-pos-pix', {

@@ -50,8 +50,9 @@ export default function PointOfSale() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('0');
-  const [closingAmount, setClosingAmount] = useState('');
-  const [expectedCash, setExpectedCash] = useState(0);
+  const [closingBreakdown, setClosingBreakdown] = useState({ dinheiro: '', pix: '', credito: '', debito: '', voucher: '' });
+  const [closingJustification, setClosingJustification] = useState('');
+  const countedTotal = Object.values(closingBreakdown).reduce((total, amount) => total + Number(amount || 0), 0);
   const [paymentRows, setPaymentRows] = useState([]);
   const cashChange = paymentRows.reduce((sum, row) => row.method === 'cash'
     ? sum + Math.max(0, Number(row.cash_received || 0) - Number(row.amount || 0))
@@ -72,8 +73,7 @@ export default function PointOfSale() {
 
   const loadRegister = useCallback(async () => {
     if (!supabase || !profile?.restaurant_id || !isCashier) return;
-    const { data, error: queryError } = await supabase.from('cash_registers').select('*')
-      .eq('restaurant_id', profile.restaurant_id).eq('status', 'aberto').maybeSingle();
+    const { data, error: queryError } = await supabase.rpc('get_open_cash_register');
     if (!queryError) setRegister(data || null);
     else setError(`Falha ao consultar o caixa: ${queryError.message}`);
   }, [profile?.restaurant_id, isCashier]);
@@ -136,10 +136,19 @@ export default function PointOfSale() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
         if (selectedTable) loadActiveOrder(selectedTable).catch(() => {});
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers', filter: `restaurant_id=eq.${profile.restaurant_id}` }, loadRegister)
       .subscribe(status => setRealtimeConnected(status === 'SUBSCRIBED'));
     return () => { setRealtimeConnected(false); supabase.removeChannel(channel); };
   }, [profile?.restaurant_id, selectedTable, refreshTables, loadActiveOrder, loadRegister]);
+
+  useEffect(() => {
+    if (!isCashier) return undefined;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') loadRegister();
+    }, 15000);
+    const onFocus = () => loadRegister();
+    window.addEventListener('focus', onFocus);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
+  }, [isCashier, loadRegister]);
 
   useEffect(() => {
     if (!pix?.payment_id || !supabase) return undefined;
@@ -241,10 +250,8 @@ export default function PointOfSale() {
 
   const openCashClose = async () => {
     if (!register) return;
-    const { data } = await supabase.from('payments_log').select('value_paid')
-      .eq('cash_register_id', register.id).eq('payment_method', 'dinheiro').eq('status', 'pago');
-    const expected = Number(register.opening_amount || 0) + (data || []).reduce((sum, row) => sum + Number(row.value_paid || 0), 0);
-    setExpectedCash(expected); setClosingAmount(expected.toFixed(2)); setDialog('register-close'); setError('');
+    setClosingBreakdown({ dinheiro: '', pix: '', credito: '', debito: '', voucher: '' });
+    setClosingJustification(''); setDialog('register-close'); setError('');
   };
 
   const submitOpenRegister = async event => {
@@ -256,8 +263,10 @@ export default function PointOfSale() {
 
   const submitCloseRegister = async event => {
     event.preventDefault(); setBusy(true); setError('');
-    try { await closePosCashRegister(register.id, closingAmount); setRegister(null); setDialog(''); setMessage(`Caixa fechado. Diferença: ${money(Number(closingAmount || 0) - expectedCash)}.`); }
-    catch (closeError) { setError(closeError.message); }
+    try {
+      const audit = await closePosCashRegister(register.id, closingBreakdown, closingJustification);
+      setRegister(null); setDialog(''); setMessage(`Caixa fechado. Diferen?a apurada: ${money(audit.difference)}.`);
+    } catch (closeError) { setError(closeError.message); }
     setBusy(false);
   };
 
@@ -430,8 +439,8 @@ export default function PointOfSale() {
       {dialog === 'register-open' && <form className="pos-modal" onSubmit={submitOpenRegister}>
         <button type="button" className="pos-modal-close" onClick={() => setDialog('')} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><Wallet size={23}/></span><h2>Abrir caixa</h2><p>Informe o valor inicial que ficará disponível para troco.</p><label>Fundo de caixa<input autoFocus type="number" min="0" step="0.01" value={openingAmount} onChange={event => setOpeningAmount(event.target.value)} required/></label>{error && <p className="pos-modal-error">{error}</p>}<button className="pos-primary" disabled={busy}>{busy ? 'Abrindo…' : 'Abrir caixa'}</button>
       </form>}
-      {dialog === 'register-close' && <form className="pos-modal" onSubmit={submitCloseRegister}>
-        <button type="button" className="pos-modal-close" onClick={() => setDialog('')} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><Wallet size={23}/></span><h2>Fechar caixa</h2><p>Confira o dinheiro físico e registre o valor contado.</p><div className="pos-cash-expected"><span>Esperado em dinheiro</span><b>{money(expectedCash)}</b></div><label>Valor contado<input autoFocus type="number" min="0" step="0.01" value={closingAmount} onChange={event => setClosingAmount(event.target.value)} required/></label>{error && <p className="pos-modal-error">{error}</p>}<button className="pos-primary" disabled={busy}>{busy ? 'Fechando…' : 'Confirmar fechamento'}</button>
+      {dialog === 'register-close' && <form className="pos-modal pos-blind-close-modal" onSubmit={submitCloseRegister}>
+        <button type="button" className="pos-modal-close" onClick={() => setDialog('')} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><Wallet size={23}/></span><h2>Fechamento cego</h2><p>Conte o dinheiro e os comprovantes. O saldo esperado ficará oculto até confirmar.</p><div className="pos-blind-count-grid">{[['dinheiro','Dinheiro'],['pix','Pix'],['credito','Crédito'],['debito','Débito'],['voucher','Voucher']].map(([key,label])=><label key={key}>{label}<input autoFocus={key==='dinheiro'} type="number" min="0" step="0.01" value={closingBreakdown[key]} onChange={event => setClosingBreakdown(current => ({ ...current, [key]: event.target.value }))} required/></label>)}</div><p className="pos-blind-count-total">Total contado <b>{money(countedTotal)}</b></p><label>Justificativa, se houver diferença<textarea value={closingJustification} onChange={event => setClosingJustification(event.target.value)} maxLength={500} placeholder="Será necessária se a diferença ultrapassar a tolerância."/></label>{error && <p className="pos-modal-error">{error}</p>}<button className="pos-primary" disabled={busy}>{busy ? 'Fechando…' : 'Confirmar contagem'}</button>
       </form>}
       {dialog === 'customize' && customProduct && <section className="pos-modal pos-customize-modal" role="dialog" aria-modal="true" aria-labelledby="pos-customize-title">
         <button type="button" className="pos-modal-close" onClick={() => setDialog('')} aria-label="Fechar"><X size={19}/></button><span className="pos-modal-icon"><ChefHat size={23}/></span><h2 id="pos-customize-title">Personalizar item</h2><p>{customProduct.name}</p>
