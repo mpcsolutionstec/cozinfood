@@ -62,3 +62,5 @@
 @media(max-width:620px){.waiter-table-card{min-height:226px}.waiter-table-art{width:62px;height:62px;flex-basis:62px}.waiter-table-card-top{margin-bottom:7px}}
 .waiter-modal-icon.waiter-modal-table-image{width:64px;height:64px;overflow:hidden;border-radius:18px;background:#eaf7f0;color:inherit}
 .waiter-modal-table-image img{display:block;width:100%;height:100%;padding:2px;object-fit:contain;mix-blend-mode:multiply}
+
+.waiter-quantity input{width:38px;min-width:38px;height:36px;padding:0;border:0;background:#fff;text-align:center;font-weight:700;color:var(--wa-ink);appearance:textfield;-moz-appearance:textfield}.waiter-quantity input::-webkit-inner-spin-button,.waiter-quantity input::-webkit-outer-spin-button{appearance:none;margin:0}.waiter-catalog-quantity{height:34px}.waiter-catalog-quantity button{width:32px;height:32px}.waiter-catalog-quantity input{height:32px;width:32px;min-width:32px}
