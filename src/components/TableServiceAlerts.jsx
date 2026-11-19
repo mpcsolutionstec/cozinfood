@@ -72,7 +72,7 @@ export default function TableServiceAlerts({ role }) {
   };
 
   const load = useCallback(async () => {
-    if (!supabase || role !== 'admin') return;
+    if (!supabase || !['admin','caixa'].includes(role)) return;
     const { data } = await supabase.rpc('list_table_service_calls');
     if (Array.isArray(data)) {
       const incoming = data.filter(call => !seenCallIds.current.has(call.id));
@@ -84,7 +84,7 @@ export default function TableServiceAlerts({ role }) {
   }, [alertForNewCall, role]);
 
   useEffect(() => {
-    if (role !== 'admin' || !supabase) return undefined;
+    if (!['admin','caixa'].includes(role) || !supabase) return undefined;
     const toggleInbox = () => setInboxOpen(open => !open);
     const closeOnEscape = event => { if (event.key === 'Escape') setInboxOpen(false); };
     window.addEventListener('cozinfood:toggle-service-inbox', toggleInbox);
