@@ -32,6 +32,13 @@ export default function CashRegisterManager({ profile }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const isAdmin = profile?.role === 'admin';
+  const can = permission => isAdmin || (profile?.permissions || []).includes(permission);
+  const canOpen = can('finance.cash.open');
+  const canClose = can('finance.cash.close');
+  const canWithdraw = can('finance.cash.withdrawal');
+  const canReinforce = can('finance.cash.reinforcement');
+  const movementOptions = [['sangria','Sangria',canWithdraw],['reforco','Reforco',canReinforce]].filter(([, ,allowed]) => allowed);
+  useEffect(() => { if (movementOptions.length && !movementOptions.some(([value]) => value === movement.type)) setMovement(current => ({ ...current, type: movementOptions[0][0] })); }, [movementOptions.map(([value]) => value).join(','), movement.type]);
   const countedTotal = useMemo(() => Object.values(counts).reduce((sum, value) => sum + Number(value || 0), 0), [counts]);
 
   const refresh = useCallback(async () => {
@@ -76,13 +83,13 @@ export default function CashRegisterManager({ profile }) {
   }, [profile?.restaurant_id, refresh]);
 
   const submitOpen = async event => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault(); if (!canOpen) { setError('Seu usuario nao pode abrir o caixa.'); return; } setBusy(true); setError('');
     try { await openRegister(openingAmount); setNotice('Turno de caixa aberto.'); }
     catch (openError) { setError(openError.message || 'Não foi possível abrir o caixa.'); }
     finally { setBusy(false); }
   };
   const submitMovement = async event => {
-    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    event.preventDefault(); if ((movement.type === 'sangria' && !canWithdraw) || (movement.type === 'reforco' && !canReinforce)) { setError('Seu usuario nao pode registrar esta movimentacao.'); return; } setBusy(true); setError(''); setNotice('');
     try {
       await recordMovement({ ...movement, registerId: register.id, isAdmin });
       setMovement(current => ({ ...current, amount: '', description: '', managerPassword: '' }));
@@ -91,7 +98,7 @@ export default function CashRegisterManager({ profile }) {
     finally { setBusy(false); }
   };
   const submitClose = async event => {
-    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    event.preventDefault(); if (!canClose) { setError('Seu usuario nao pode fechar o caixa.'); return; } setBusy(true); setError(''); setNotice('');
     try {
       const result = await closeRegister({ registerId: register.id, countedBreakdown: counts, justification });
       setAudit(result); setCounts(emptyCount()); setJustification(''); setNotice('Turno fechado e auditado.');
@@ -115,27 +122,27 @@ export default function CashRegisterManager({ profile }) {
     <div className="finance-page-heading"><div><span className="finance-eyebrow">TURNO E CONFERÊNCIA</span><h2>Controle de caixa</h2><p>Abra o turno, registre movimentações e feche com contagem cega por forma de pagamento.</p></div><button className="finance-quiet-button" onClick={refresh} disabled={loading}><RefreshCw size={16}/> Atualizar</button></div>
     {(error || storeError) && <div className="finance-alert error" role="alert">{error || storeError}</div>}
     {notice && <div className="finance-alert success" role="status"><BadgeCheck size={16}/>{notice}</div>}
-    {!register ? <form className="finance-open-card" onSubmit={submitOpen}>
+    {!register && canOpen ? <form className="finance-open-card" onSubmit={submitOpen}>
       <span className="finance-icon-tile"><Wallet size={23}/></span><div className="finance-card-copy"><h3>Abrir turno de caixa</h3><p>Informe o fundo inicial disponível para troco. O saldo esperado não será mostrado durante o turno.</p></div>
       <label>Fundo de troco inicial<input type="number" min="0" step="0.01" value={openingAmount} onChange={event => setOpeningAmount(event.target.value)} required/></label>
       <button className="finance-primary-button" disabled={busy}>{busy ? 'Abrindo…' : 'Abrir caixa'}</button>
-    </form> : <>
+    </form> : !register ? <div className="finance-empty-inline">Nao ha caixa aberto. Solicite a um administrador ou operador autorizado que inicie o turno.</div> : <>
       <div className="finance-register-banner"><div className="finance-icon-tile active"><Wallet size={22}/></div><div><span className="finance-live-label"><i/> TURNO ABERTO</span><h3>Caixa em operação</h3><p>Aberto às {new Date(register.opened_at).toLocaleString('pt-BR')} · Fundo inicial {money(register.opening_amount)}{register.operator_id === profile?.id ? ' · Aberto por você' : ' · Operador responsável diferente'}</p></div></div>
       <div className="finance-cash-actions">
-        <form className="finance-panel" onSubmit={submitMovement}>
+        {movementOptions.length > 0 && <form className="finance-panel" onSubmit={submitMovement}>
           <div className="finance-panel-title"><span className="finance-icon-tile"><ArrowDownToLine size={18}/></span><div><h3>Registrar retirada ou reforço</h3><p>Sangrias exigem autorização de gerente.</p></div></div>
-          <div className="finance-inline-fields"><label>Movimentação<select value={movement.type} onChange={event => setMovement(current => ({ ...current, type: event.target.value, categoryId: '' }))}><option value="sangria">Sangria</option><option value="reforco">Reforço</option></select></label><label>Valor (R$)<input type="number" min="0.01" step="0.01" value={movement.amount} onChange={event => setMovement(current => ({ ...current, amount: event.target.value }))} required/></label></div>
+          <div className="finance-inline-fields"><label>Movimentação<select value={movement.type} onChange={event => setMovement(current => ({ ...current, type: event.target.value, categoryId: '' }))}>{movementOptions.map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Valor (R$)<input type="number" min="0.01" step="0.01" value={movement.amount} onChange={event => setMovement(current => ({ ...current, amount: event.target.value }))} required/></label></div>
           <label>Descrição<input value={movement.description} onChange={event => setMovement(current => ({ ...current, description: event.target.value }))} minLength={3} maxLength={240} placeholder="Ex.: retirada para o cofre" required/></label>
           {movement.type === 'sangria' && <><label>Categoria (opcional; classifica como despesa)<select value={movement.categoryId} onChange={event => setMovement(current => ({ ...current, categoryId: event.target.value }))}><option value="">Transferência/retirada, não despesa</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Senha de gerente<input type="password" value={movement.managerPassword} onChange={event => setMovement(current => ({ ...current, managerPassword: event.target.value }))} autoComplete="off" required/></label></>}
           <button className="finance-secondary-button" disabled={busy}>{movement.type === 'sangria' ? <ArrowUpFromLine size={16}/> : <ArrowDownToLine size={16}/>} Registrar {movement.type}</button>
-        </form>
-        <form className="finance-panel finance-blind-close" onSubmit={submitClose}>
+        </form>}
+        {canClose && <form className="finance-panel finance-blind-close" onSubmit={submitClose}>
           <div className="finance-panel-title"><span className="finance-icon-tile secure"><LockKeyhole size={18}/></span><div><h3>Fechamento cego</h3><p>Informe o que contou sem consultar o saldo calculado.</p></div></div>
           <div className="finance-count-grid">{methods.map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.01" value={counts[key]} onChange={event => setCounts(current => ({ ...current, [key]: event.target.value }))} required/></label>)}</div>
           <div className="finance-count-total"><span>Total contado</span><b>{money(countedTotal)}</b></div>
           <label>Justificativa para diferença acima da tolerância<textarea value={justification} onChange={event => setJustification(event.target.value)} maxLength={500} placeholder={`Obrigatória se a diferença exceder ${money(managerConfig.discrepancy_tolerance)}.`}/></label>
           <button className="finance-danger-button" disabled={busy}>{busy ? 'Conferindo…' : 'Conferir e fechar turno'}</button>
-        </form>
+        </form>}
       </div>
       {isAdmin && <div className="finance-panel finance-movements-panel"><div className="finance-panel-title"><span className="finance-icon-tile"><Clock3 size={18}/></span><div><h3>Movimentações do turno</h3><p>Vendas, sangrias e reforços registrados neste caixa.</p></div></div>{movements.length ? <div className="finance-movement-list">{movements.map(item=><div className="finance-movement-row" key={item.id}><span className={`finance-movement-mark ${item.type}`}>{item.type==='venda'?'V':item.type==='reforco'?'+':item.type==='estorno'?'E':'−'}</span><div><b>{item.description}</b><small>{item.type} · {methodLabels[item.payment_method] || item.payment_method} · {new Date(item.created_at).toLocaleString('pt-BR')}</small></div><strong className={['sangria','estorno'].includes(item.type)?'negative':''}>{['sangria','estorno'].includes(item.type)?'−':'+'}{money(item.amount)}</strong></div>)}</div> : <p className="finance-empty-inline">Nenhuma movimentação registrada para este turno.</p>}</div>}
       {isAdmin && <form className="finance-panel finance-security-panel" onSubmit={submitManagerPassword}><div className="finance-panel-title"><span className="finance-icon-tile secure"><ShieldCheck size={18}/></span><div><h3>Autorização e tolerância</h3><p>{managerConfig.configured ? 'Senha de gerente configurada. Salvar uma nova senha substitui a atual.' : 'Configure a senha que autoriza sangrias neste restaurante.'}</p></div></div><div className="finance-inline-fields"><label>Nova senha de gerente<input type="password" minLength={8} value={managerPassword} onChange={event => setManagerPassword(event.target.value)} placeholder="Mínimo 8 caracteres" required/></label><label>Tolerância de diferença (R$)<input type="number" min="0" max="100" step="0.01" value={tolerance} onChange={event => setTolerance(event.target.value)} required/></label></div><button className="finance-secondary-button" disabled={busy}>Salvar configuração</button></form>}

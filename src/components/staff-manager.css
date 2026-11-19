@@ -3,3 +3,23 @@
 @media(max-width:720px){.staff-heading{align-items:flex-start;gap:10px}.staff-heading p{max-width:250px;line-height:1.5}.staff-invite-button{height:39px;padding:0 10px;white-space:nowrap;font-size:10px}.staff-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.staff-stats article{padding:10px}.staff-stat-icon{width:32px;height:32px;flex-basis:32px}.staff-stats small{font-size:9px}.staff-stats b{font-size:17px}.staff-panel{padding:13px 11px}.staff-panel-head{flex-wrap:wrap}.staff-panel-head>div{width:100%;margin-bottom:2px}.staff-search{flex:1;width:auto}.staff-row{grid-template-columns:34px minmax(0,1fr) auto;gap:9px;padding:12px 1px}.staff-avatar{width:33px;height:33px;grid-column:1;grid-row:1}.staff-identity{grid-column:2;grid-row:1}.staff-identity b{font-size:11px}.staff-identity span{font-size:9px}.staff-role-field{grid-column:2;grid-row:2}.staff-role-field select{height:38px}.staff-role-field small{display:none}.staff-phone-field{grid-column:2;grid-row:3}.staff-phone-field input{height:36px}.staff-active-toggle{grid-column:3;grid-row:1;justify-self:end}.staff-save{grid-column:3;grid-row:2;min-width:68px}.staff-roles>div{grid-template-columns:1fr;gap:8px}.staff-roles article{padding:9px 11px}.staff-roles article small{font-size:10px}}
 
 .staff-modal form>label input:focus,.staff-modal form>label select:focus{outline:0;border-color:#f09975;box-shadow:0 0 0 3px #f36f3d12}
+.staff-row{grid-template-columns:38px minmax(130px,1.2fr) minmax(125px,.9fr) minmax(150px,1fr) minmax(110px,.75fr) auto auto auto}
+.staff-permission-open{height:34px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 8px;border:1px solid #e2e6ec;border-radius:7px;background:#fff;color:#687589;font:600 10px 'DM Sans',sans-serif;white-space:nowrap;cursor:pointer}
+.staff-permission-open:hover{border-color:#efb39a;background:#fff7f3;color:#bc5c39}
+.staff-field-hint{display:block;color:#8792a2;font-size:9px;line-height:1.4}
+.staff-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.staff-modal-actions button{height:38px;display:flex;align-items:center;gap:7px}
+.staff-permission-list{display:grid;gap:8px}
+.staff-permission-toggle{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 12px;border:1px solid #e7eaef;border-radius:9px;cursor:pointer}
+.staff-permission-toggle span{display:grid;gap:4px}
+.staff-permission-toggle b{font-size:11px;color:#354256}
+.staff-permission-toggle small{font-size:9px;color:#8893a2;line-height:1.4}
+.staff-permission-toggle input{width:18px;height:18px;accent-color:#e96d40;flex:0 0 auto}
+.staff-modal form>label:has(.staff-field-hint){gap:4px}
+@media(max-width:1100px){.staff-row{grid-template-columns:36px minmax(130px,1fr) minmax(125px,.9fr) minmax(155px,1fr) auto auto auto}}
+@media(max-width:720px){.staff-row{grid-template-columns:34px minmax(0,1fr) auto}.staff-permission-open{grid-column:2;grid-row:4;justify-self:start}.staff-active-toggle{grid-column:3;grid-row:1}.staff-save{grid-column:3;grid-row:2}}
+.staff-cashier-credentials{display:grid;gap:9px;margin-top:14px;padding:13px;border:1px solid #e8ebef;border-radius:9px;background:#fbfcfd}
+.staff-cashier-credentials h3{margin:0;font:700 11px Manrope,sans-serif;color:#354256}
+.staff-cashier-credentials label{display:grid;gap:5px;font-size:10px;font-weight:600;color:#455267}
+.staff-cashier-credentials label input{width:100%;height:38px;padding:0 10px;border:1px solid #dfe4eb;border-radius:7px;background:#fff;color:#354256;font:12px 'DM Sans',sans-serif}
+.staff-cashier-credentials label small{font-size:9px;color:#929baa;font-weight:400}

@@ -69,7 +69,11 @@ export default function PointOfSale() {
   const [customFlavorIds, setCustomFlavorIds] = useState([]);
   const [customAdditions, setCustomAdditions] = useState([]);
   const searchRef = useRef(null);
-  const isCashier = ['admin', 'caixa'].includes(profile?.role);
+  const can = permission => profile?.role === 'admin' || (profile?.permissions || []).includes(permission);
+  const isCashier = profile?.role === 'admin' || can('pdv.access') || can('finance.cash.access');
+  const canSell = can('pdv.sell');
+  const canOpenRegister = can('finance.cash.open');
+  const canCloseRegister = can('finance.cash.close');
 
   const loadRegister = useCallback(async () => {
     if (!supabase || !profile?.restaurant_id || !isCashier) return;
@@ -222,7 +226,7 @@ export default function PointOfSale() {
 
   const openPayment = () => {
     if (!isCashier) { setError('O recebimento no PDV é liberado para os perfis administrador e caixa.'); return; }
-    if (!register) { setError('Abra o caixa antes de finalizar o pagamento.'); setDialog('register-open'); return; }
+    if (!register) { setError('Abra o caixa antes de finalizar o pagamento.'); if (canOpenRegister) setDialog('register-open'); return; }
     if (!cart.length && !activeOrder) { setError('Adicione itens ou abra uma comanda antes de finalizar.'); return; }
     setError(''); setPaymentRows([{ method: 'cash', amount: totalDue.toFixed(2), cash_received: totalDue.toFixed(2) }]);
     setPix(null); setPixStatus(''); setDialog('payment');
@@ -246,23 +250,25 @@ export default function PointOfSale() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mode, cart, setMode, removeItem, register, isCashier, activeOrder, totalDue, selectedTable, dialog]);
+  }, [mode, cart, setMode, removeItem, register, isCashier, canSell, activeOrder, totalDue, selectedTable, dialog]);
 
   const openCashClose = async () => {
-    if (!register) return;
+    if (!canCloseRegister || !register) return;
     setClosingBreakdown({ dinheiro: '', pix: '', credito: '', debito: '', voucher: '' });
     setClosingJustification(''); setDialog('register-close'); setError('');
   };
 
   const submitOpenRegister = async event => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault();
+    if (!canOpenRegister) { setError('Seu usuario nao tem permissao para abrir o caixa.'); return; } setBusy(true); setError('');
     try { setRegister(await openPosCashRegister(openingAmount)); setDialog(''); setMessage('Caixa aberto para este turno.'); }
     catch (openError) { setError(openError.message); }
     setBusy(false);
   };
 
   const submitCloseRegister = async event => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault();
+    if (!canCloseRegister) { setError('Seu usuario nao tem permissao para fechar o caixa.'); return; } setBusy(true); setError('');
     try {
       const audit = await closePosCashRegister(register.id, closingBreakdown, closingJustification);
       setRegister(null); setDialog(''); setMessage(`Caixa fechado. Diferen?a apurada: ${money(audit.difference)}.`);
@@ -376,9 +382,7 @@ export default function PointOfSale() {
         </div>
         <div className={`pos-register ${register ? 'open' : ''}`}>
           <span className="pos-register-dot"/><span>Caixa {register ? 'aberto' : 'fechado'}</span>
-          {isCashier && (register
-            ? <button onClick={openCashClose}>Fechar caixa</button>
-            : <button onClick={() => { setError(''); setDialog('register-open'); }}>Abrir caixa</button>)}
+          {isCashier && register && canCloseRegister && <button onClick={openCashClose}>Fechar caixa</button>}{isCashier && !register && canOpenRegister && <button onClick={() => { setError(''); setDialog('register-open'); }}>Abrir caixa</button>}
         </div>
       </div>
     </header>
@@ -429,7 +433,7 @@ export default function PointOfSale() {
           {mode === 'salao' && activeOrder && <div><span>Comanda atual</span><b>{money(tableOrdersTotal)}</b></div>}
           {cart.length > 0 && <div><span>{mode === 'salao' ? 'Novos itens' : 'Subtotal'}</span><b>{money(cartTotal)}</b></div>}
           <div className="pos-ticket-total"><span>Total {mode === 'salao' ? 'da comanda' : 'da venda'}</span><strong>{money(mode === 'salao' ? tableOrdersTotal + cartTotal : cartTotal)}</strong></div>
-          {mode === 'balcao' ? <button className="pos-primary" onClick={openPayment} disabled={!cart.length || busy}><CircleDollarSign size={18}/> Finalizar pagamento <kbd>F4</kbd></button> : <div className="pos-salon-actions"><button className="pos-primary" onClick={sendToKitchen} disabled={!cart.length || !selectedTable || busy}><ChefHat size={18}/> Enviar à produção</button><button className="pos-secondary" onClick={openPayment} disabled={!activeOrder && !cart.length || busy}><Wallet size={17}/> Fechar conta</button></div>}
+          {mode === 'balcao' ? <button className="pos-primary" onClick={openPayment} disabled={!cart.length || busy || !canSell}><CircleDollarSign size={18}/> Finalizar pagamento <kbd>F4</kbd></button> : <div className="pos-salon-actions"><button className="pos-primary" onClick={sendToKitchen} disabled={!cart.length || !selectedTable || busy}><ChefHat size={18}/> Enviar à produção</button><button className="pos-secondary" onClick={openPayment} disabled={!activeOrder && !cart.length || busy || !canSell}><Wallet size={17}/> Fechar conta</button></div>}
           <small className="pos-shortcuts">F2 buscar · F3 alternar modo · F4 pagamento · Esc remover último item</small>
         </div>
       </aside>

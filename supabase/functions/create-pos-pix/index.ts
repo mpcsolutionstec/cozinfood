@@ -32,10 +32,14 @@ Deno.serve(async request => {
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
     const [{ data: profile }, body] = await Promise.all([
-      admin.from('profiles').select('restaurant_id,role,active').eq('id', authData.user.id).maybeSingle(),
+      admin.from('profiles').select('restaurant_id,role,active,permissions').eq('id', authData.user.id).maybeSingle(),
       request.json(),
     ])
-    if (!profile?.active || !['admin', 'caixa'].includes(profile.role)) {
+    const canSell = profile?.role === 'admin' || (
+      (profile?.permissions || []).includes('pdv.access') &&
+      (profile?.permissions || []).includes('pdv.sell')
+    )
+    if (!profile?.active || !canSell) {
       return reply({ error: 'Somente administrador ou caixa pode cobrar no PDV.' }, 403)
     }
 
