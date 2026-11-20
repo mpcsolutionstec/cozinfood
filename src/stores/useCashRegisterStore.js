@@ -29,7 +29,7 @@ export const useCashRegisterStore = create((set, get) => ({
   loadMovements: async (registerId, isAdmin) => {
     if (!supabase || !registerId || !isAdmin) { set({ movements: [] }); return []; }
     const { data, error } = await supabase.from('cash_movements')
-      .select('id,type,payment_method,amount,description,created_at,category_id')
+      .select('id,type,payment_method,amount,description,created_at,category_id,created_by,profiles(full_name)')
       .eq('cash_register_id', registerId).order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
     set({ movements: data || [] });
