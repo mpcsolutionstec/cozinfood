@@ -29,6 +29,7 @@ export default function CashRegisterManager({ profile }) {
   const [audit, setAudit] = useState(null);
   const [history, setHistory] = useState([]);
   const [operatorName, setOperatorName] = useState('');
+  const [openRegisters, setOpenRegisters] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -51,6 +52,14 @@ export default function CashRegisterManager({ profile }) {
         const { data: operator } = await supabase.from('profiles').select('full_name').eq('id', current.operator_id).maybeSingle();
         setOperatorName(operator?.full_name || 'Operador');
       } else setOperatorName('');
+      if (isAdmin) {
+        const { data: openRows, error: rowsError } = await supabase.from('cash_registers').select('id,operator_id,opened_at').eq('restaurant_id', profile.restaurant_id).eq('status', 'aberto').order('opened_at');
+        if (rowsError) throw rowsError;
+        const operatorIds = [...new Set((openRows || []).map(row => row.operator_id).filter(Boolean))];
+        const { data: operators } = operatorIds.length ? await supabase.from('profiles').select('id,full_name').in('id', operatorIds) : { data: [] };
+        const names = Object.fromEntries((operators || []).map(person => [person.id, person.full_name]));
+        setOpenRegisters((openRows || []).map(row => ({ ...row, operator_name: names[row.operator_id] || 'Operador' })));
+      }
       await Promise.all([
         loadMovements(current?.id, isAdmin),
         isAdmin ? supabase.rpc('list_cash_register_audits', { p_limit: 12 }).then(({ data, error: auditsError }) => {
@@ -96,7 +105,9 @@ export default function CashRegisterManager({ profile }) {
   const submitMovement = async event => {
     event.preventDefault(); if ((movement.type === 'sangria' && !canWithdraw) || (movement.type === 'reforco' && !canReinforce)) { setError('Seu usuario nao pode registrar esta movimentacao.'); return; } setBusy(true); setError(''); setNotice('');
     try {
-      await recordMovement({ ...movement, registerId: register.id, isAdmin });
+      const targetRegisterId = isAdmin ? movement.registerId || register?.id : register?.id;
+      if (!targetRegisterId) throw new Error('Selecione o caixa do operador para registrar a movimentação.');
+      await recordMovement({ ...movement, registerId: targetRegisterId, isAdmin });
       setMovement(current => ({ ...current, amount: '', description: '', managerPassword: '' }));
       await refresh(); setNotice(movement.type === 'sangria' ? 'Sangria autorizada e registrada.' : 'Reforço registrado.');
     } catch (movementError) { setError(movementError.message || 'Não foi possível registrar a movimentaÃ§Ã£o.'); }
@@ -136,6 +147,7 @@ export default function CashRegisterManager({ profile }) {
       <div className="finance-cash-actions">
         {movementOptions.length > 0 && <form className="finance-panel" onSubmit={submitMovement}>
           <div className="finance-panel-title"><span className="finance-icon-tile"><ArrowDownToLine size={18}/></span><div><h3>Registrar retirada ou reforÃ§o</h3><p>Sangrias exigem autorizaÃ§Ã£o de gerente.</p></div></div>
+          {isAdmin && <label>Caixa do operador<select value={movement.registerId || register?.id || ''} onChange={event => setMovement(current => ({ ...current, registerId: event.target.value }))} required><option value="">Selecione o turno</option>{openRegisters.map(row => <option key={row.id} value={row.id}>{row.operator_name} · aberto às {new Date(row.opened_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</option>)}</select></label>}
           <div className="finance-inline-fields"><label>Movimentação<select value={movement.type} onChange={event => setMovement(current => ({ ...current, type: event.target.value, categoryId: '' }))}>{movementOptions.map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Valor (R$)<input type="number" min="0.01" step="0.01" value={movement.amount} onChange={event => setMovement(current => ({ ...current, amount: event.target.value }))} required/></label></div>
           <label>Descrição<input value={movement.description} onChange={event => setMovement(current => ({ ...current, description: event.target.value }))} minLength={3} maxLength={240} placeholder="Ex.: retirada para o cofre" required/></label>
           {movement.type === 'sangria' && <><label>Categoria (opcional; classifica como despesa)<select value={movement.categoryId} onChange={event => setMovement(current => ({ ...current, categoryId: event.target.value }))}><option value="">Transferência/retirada, não despesa</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Senha de gerente<input type="password" value={movement.managerPassword} onChange={event => setMovement(current => ({ ...current, managerPassword: event.target.value }))} autoComplete="off" required/></label></>}
@@ -150,7 +162,7 @@ export default function CashRegisterManager({ profile }) {
         </form>}
       </div>
       {isAdmin && <div className="finance-panel finance-movements-panel"><div className="finance-panel-title"><span className="finance-icon-tile"><Clock3 size={18}/></span><div><h3>Movimentações do turno</h3><p>Vendas, sangrias e reforços registrados neste caixa.</p></div></div>{movements.length ? <div className="finance-movement-list">{movements.map(item=><div className="finance-movement-row" key={item.id}><span className={`finance-movement-mark ${item.type}`}>{item.type==='venda'?'V':item.type==='reforco'?'+':item.type==='estorno'?'E':'−'}</span><div><b>{item.description}</b><small>{item.type} · {methodLabels[item.payment_method] || item.payment_method} · {new Date(item.created_at).toLocaleString('pt-BR')} · Operador: {item.profiles?.full_name || 'Não identificado'}</small></div><strong className={['sangria','estorno'].includes(item.type)?'negative':''}>{['sangria','estorno'].includes(item.type)?'−':'+'}{money(item.amount)}</strong></div>)}</div> : <p className="finance-empty-inline">Nenhuma movimentação registrada para este turno.</p>}</div>}
-      {isAdmin && <form className="finance-panel finance-security-panel" onSubmit={submitManagerPassword}><div className="finance-panel-title"><span className="finance-icon-tile secure"><ShieldCheck size={18}/></span><div><h3>Autorização e tolerância</h3><p>{managerConfig.configured ? 'Senha de gerente configurada. Salvar uma nova senha substitui a atual.' : 'Configure a senha que autoriza sangrias neste restaurante.'}</p></div></div><div className="finance-inline-fields"><label>Nova senha de gerente<input type="password" minLength={8} value={managerPassword} onChange={event => setManagerPassword(event.target.value)} placeholder="Mínimo 8 caracteres" required/></label><label>TolerÃ¢ncia de diferença (R$)<input type="number" min="0" max="100" step="0.01" value={tolerance} onChange={event => setTolerance(event.target.value)} required/></label></div><button className="finance-secondary-button" disabled={busy}>Salvar configuração</button></form>}
+      {isAdmin && <form className="finance-panel finance-security-panel" onSubmit={submitManagerPassword}><div className="finance-panel-title"><span className="finance-icon-tile secure"><ShieldCheck size={18}/></span><div><h3>Autorização e tolerância</h3><p>{managerConfig.configured ? 'Senha de gerente configurada. Salvar uma nova senha substitui a atual.' : 'Configure a senha que autoriza sangrias neste restaurante.'}</p></div></div><div className="finance-inline-fields"><label>Nova senha de gerente<input type="password" minLength={8} value={managerPassword} onChange={event => setManagerPassword(event.target.value)} placeholder="Mínimo 8 caracteres" required/></label><label>Tolerância de diferença (R$)<input type="number" min="0" max="100" step="0.01" value={tolerance} onChange={event => setTolerance(event.target.value)} required/></label></div><button className="finance-secondary-button" disabled={busy}>Salvar configuração</button></form>}
     </>}
     {!register && isAdmin && <form className="finance-panel finance-security-panel" onSubmit={submitManagerPassword}><div className="finance-panel-title"><span className="finance-icon-tile secure"><ShieldCheck size={18}/></span><div><h3>Autorização e tolerância</h3><p>{managerConfig.configured ? 'Senha de gerente configurada. Salvar uma nova senha substitui a atual.' : 'Configure a senha que autoriza sangrias neste restaurante.'}</p></div></div><div className="finance-inline-fields"><label>Nova senha de gerente<input type="password" minLength={8} value={managerPassword} onChange={event => setManagerPassword(event.target.value)} placeholder="Mínimo 8 caracteres" required/></label><label>TolerÃ¢ncia de diferença (R$)<input type="number" min="0" max="100" step="0.01" value={tolerance} onChange={event => setTolerance(event.target.value)} required/></label></div><button className="finance-secondary-button" disabled={busy}>Salvar configuração</button></form>}
     {isAdmin && <div className="finance-panel finance-audit-history"><div className="finance-panel-title"><span className="finance-icon-tile"><Clock3 size={18}/></span><div><h3>Auditorias recentes</h3><p>Fechamentos anteriores com contagem e diferença por forma de pagamento.</p></div></div>{history.length ? <div className="finance-history-list">{history.map(item=><details key={item.id} className="finance-history-item"><summary><span><b>{item.operator_name}</b><small>{new Date(item.closed_at).toLocaleString('pt-BR')}</small></span><span>Esperado {money(item.expected_amount)}<b className={Number(item.difference)<0?'negative':'positive'}>DiferenÃ§a {money(item.difference)}</b></span></summary><div className="finance-audit-methods">{methods.map(([key,label])=><span key={key}>{label}<b>{money(item.closing_breakdown?.[key])}</b></span>)}</div>{item.justification&&<p>Justificativa: {item.justification}</p>}</details>)}</div> : <p className="finance-empty-inline">Ainda não hÃ¡ fechamentos auditados neste restaurante.</p>}</div>}
